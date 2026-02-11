@@ -48,7 +48,7 @@ const GrantMod = props => {
 };
 
 const handleButtonPress = async (username, tokenFetch, method) => {
-	const result = await tokenFetch(`${process.env.AUTH_URI}/admin/mod`, {
+	const result = await tokenFetch(`${config.AUTH_URI}/admin/mod`, {
 		method: method,
 		headers: {
 			'Content-Type': 'application/json'

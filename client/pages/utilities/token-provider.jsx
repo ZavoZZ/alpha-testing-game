@@ -1,6 +1,8 @@
 import React, { useState, useEffect, createContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
+const config = require('../../config');
+
 export const TokenContext = createContext();
 
 //DOCS: tokenFetch() and tokenCallback() are actually closures here
@@ -35,7 +37,7 @@ const TokenProvider = props => {
 
 		if (expired) {
 			//BUGFIX: if logging out, just skip over the refresh token
-			if (url === `${process.env.AUTH_URI}/auth/logout`) {
+			if (url === `${config.AUTH_URI}/auth/logout`) {
 				return fetch(url, {
 					method: 'DELETE',
 					headers: {
@@ -45,14 +47,14 @@ const TokenProvider = props => {
 				});
 			}
 
-			//ping the auth server for a new access token
-			const response = await fetch(`${process.env.AUTH_URI}/auth/token`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${bearer}`
-				},
-				credentials: 'include'
-			});
+		//ping the auth server for a new access token
+		const response = await fetch(`${config.AUTH_URI}/auth/refresh`, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${bearer}`
+			},
+			credentials: 'include'
+		});
 
 			//any errors, throw them
 			if (!response.ok) {
@@ -90,7 +92,7 @@ const TokenProvider = props => {
 
 		if (expired) {
 			//ping the auth server for a new token
-			const response = await fetch(`${process.env.AUTH_URI}/auth/token`, {
+			const response = await fetch(`${config.AUTH_URI}/auth/refresh`, {
 				method: 'POST',
 				headers: {
 					'Authorization': `Bearer ${bearer}`

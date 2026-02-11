@@ -32,7 +32,6 @@ const question = (prompt, def = null) => {
 
 * docker-compose.yml
 * Dockerfile
-* startup.sql
 
 Currently, all microservices are mandatory; you'll have to mess with the result
 and the source code if you wish to be more selective. Microservices currently
@@ -41,6 +40,8 @@ implemented are:
 * auth-server
 * news-server
 * chat-server
+
+NOTE: This template now uses MongoDB instead of MariaDB/MySQL.
 
 See https://github.com/krgamestudios/MERN-template/wiki for help.
 `
@@ -71,15 +72,14 @@ See https://github.com/krgamestudios/MERN-template/wiki for help.
 
   if (/^[l]/i.test(projectDBLocation[0])) {
     projectDBHost = 'database';
-    projectDBPort = '3306';
+    projectDBPort = '27017';
   }
   else {
     projectDBHost = await question('Project DB Host');
-    projectDBPort = await question('Project DB Port', '3306');
+    projectDBPort = await question('Project DB Port', '27017');
   }
 
-	const projectDBUser = await question('Project DB Username', projectName);
-	const projectDBPass = await question('Project DB Password', 'pikachu');
+	// MongoDB doesn't require username/password setup for local development
 
 	//news configuration
 	const newsName = await question('News Name', 'news');
@@ -95,15 +95,14 @@ See https://github.com/krgamestudios/MERN-template/wiki for help.
 
   if (/^[l]/i.test(newsDBLocation[0])) {
     newsDBHost = 'database';
-    newsDBPort = '3306';
+    newsDBPort = '27017';
   }
   else {
     newsDBHost = await question('News DB Host');
-    newsDBPort = await question('News DB Port', '3306');
+    newsDBPort = await question('News DB Port', '27017');
   }
 
-  const newsDBUser = await question('News DB Username', newsName);
-	const newsDBPass = await question('News DB Password', 'venusaur');
+	// MongoDB doesn't require username/password setup for local development
 
 	//auth configuration
 	const authName = await question('Auth Name', 'auth');
@@ -121,15 +120,14 @@ See https://github.com/krgamestudios/MERN-template/wiki for help.
 
   if (/^[l]/i.test(authDBLocation[0])) {
     authDBHost = 'database';
-    authDBPort = '3306';
+    authDBPort = '27017';
   }
   else {
     authDBHost = await question('Auth DB Host');
-    authDBPort = await question('Auth DB Port', '3306');
+    authDBPort = await question('Auth DB Port', '27017');
   }
 
-  const authDBUser = await question('Auth DB Username', authName);
-	const authDBPass = await question('Auth DB Password', 'charizard');
+	// MongoDB doesn't require username/password setup for local development
 
 	const emailSMTP = await question('Email SMTP', 'smtp.example.com');
 	const emailUser = await question('Email Address', 'foobar@example.com');
@@ -150,19 +148,16 @@ See https://github.com/krgamestudios/MERN-template/wiki for help.
 
   if (/^[l]/i.test(chatDBLocation[0])) {
     chatDBHost = 'database';
-    chatDBPort = '3306';
+    chatDBPort = '27017';
   }
   else {
     chatDBHost = await question('Chat DB Host');
-    chatDBPort = await question('Chat DB Port', '3306');
+    chatDBPort = await question('Chat DB Port', '27017');
   }
 
-  const chatDBUser = await question('Chat DB Username', chatName);
-	const chatDBPass = await question('Chat DB Password', 'blastoise');
+	// MongoDB doesn't require username/password setup for local development
 
-	//database configuration
-	const dbRootPassword = await question('Database Root Password', 'password');
-	const dbTimeZone = await question('Database Timezone', 'Australia/Sydney');
+	// MongoDB configuration - no root password or timezone needed for basic setup
 
 	//joint configuration
 	const accessToken = await question('Access Token Secret', uuid(32));
@@ -211,12 +206,7 @@ services:
     environment:
       - WEB_ORIGIN=${corsWebOrigin}
       - WEB_PORT=${projectPort}
-      - DB_HOSTNAME=${projectDBHost}
-      - DB_PORTNAME=${projectDBPort}
-      - DB_DATABASE=${projectName}
-      - DB_USERNAME=${projectDBUser}
-      - DB_PASSWORD=${projectDBPass}
-      - DB_TIMEZONE=${dbTimeZone}
+      - DB_URI=mongodb://${projectDBHost}:${projectDBPort}/${projectName}
       - NEWS_URI=https://${newsWebAddress}
       - AUTH_URI=https://${authWebAddress}
       - CHAT_URI=https://${chatWebAddress}
@@ -243,12 +233,7 @@ services:
     environment:
       - WEB_ORIGIN=${corsWebOrigin}
       - WEB_PORT=${newsPort}
-      - DB_HOSTNAME=${newsDBHost}
-      - DB_PORTNAME=${newsDBPort}
-      - DB_DATABASE=${newsName}
-      - DB_USERNAME=${newsDBUser}
-      - DB_PASSWORD=${newsDBPass}
-      - DB_TIMEZONE=${dbTimeZone}
+      - DB_URI=mongodb://${newsDBHost}:${newsDBPort}/${newsName}
       - PAGE_SIZE=10
       - SECRET_ACCESS=${accessToken}
     volumes:
@@ -277,12 +262,7 @@ services:
       - HOOK_POST_VALIDATION_ARRAY=${authPostValidationHookArray}
       - WEB_RESET_ADDRESS=${authResetAddress}
       - WEB_PORT=${authPort}
-      - DB_HOSTNAME=${authDBHost}
-      - DB_PORTNAME=${authDBPort}
-      - DB_DATABASE=${authName}
-      - DB_USERNAME=${authDBUser}
-      - DB_PASSWORD=${authDBPass}
-      - DB_TIMEZONE=${dbTimeZone}
+      - DB_URI=mongodb://${authDBHost}:${authDBPort}/${authName}
       - MAIL_SMTP=${emailSMTP}
       - MAIL_USERNAME=${emailUser}
       - MAIL_PASSWORD=${emailPass}
@@ -314,12 +294,7 @@ services:
     environment:
       - WEB_ORIGIN=${corsWebOrigin}
       - WEB_PORT=${chatPort}
-      - DB_HOSTNAME=${chatDBHost}
-      - DB_PORTNAME=${chatDBPort}
-      - DB_DATABASE=${chatName}
-      - DB_USERNAME=${chatDBUser}
-      - DB_PASSWORD=${chatDBPass}
-      - DB_TIMEZONE=${dbTimeZone}
+      - DB_URI=mongodb://${chatDBHost}:${chatDBPort}/${chatName}
       - SECRET_ACCESS=${accessToken}
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -331,13 +306,12 @@ services:
 
 ${ [projectDBHost, newsDBHost, authDBHost, chatDBHost].some(x => x == "database") == false ? '' : `
   database:
-    image: mariadb
+    image: mongo:latest
     restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${dbRootPassword}
+    ports:
+      - "27017:27017"
     volumes:
-      - ./mysql:/var/lib/mysql
-      - ./startup.sql:/docker-entrypoint-initdb.d/startup.sql:ro
+      - mongodb_data:/data/db
       - /etc/localtime:/etc/localtime:ro
     networks:
       - app-network
@@ -368,6 +342,9 @@ ${ [projectDBHost, newsDBHost, authDBHost, chatDBHost].some(x => x == "database"
     networks:
       - app-network
 
+volumes:
+  mongodb_data:
+
 networks:
   app-network:
     driver: bridge
@@ -386,30 +363,11 @@ ENTRYPOINT ["bash", "-c"]
 CMD ["sleep 10 && npm start"]
 `;
 
-	const sqlfile = `
-CREATE DATABASE IF NOT EXISTS ${projectName};
-CREATE USER IF NOT EXISTS '${projectDBUser}'@'${localAddress}' IDENTIFIED BY '${projectDBPass}';
-GRANT ALL PRIVILEGES ON ${projectName}.* TO '${projectDBUser}'@'${localAddress}';
-
-CREATE DATABASE IF NOT EXISTS ${newsName};
-CREATE USER IF NOT EXISTS '${newsDBUser}'@'${localAddress}' IDENTIFIED BY '${newsDBPass}';
-GRANT ALL PRIVILEGES ON ${newsName}.* TO '${newsDBUser}'@'${localAddress}';
-
-CREATE DATABASE IF NOT EXISTS ${authName};
-CREATE USER IF NOT EXISTS '${authDBUser}'@'${localAddress}' IDENTIFIED BY '${authDBPass}';
-GRANT ALL PRIVILEGES ON ${authName}.* TO '${authDBUser}'@'${localAddress}';
-
-CREATE DATABASE IF NOT EXISTS ${chatName};
-CREATE USER IF NOT EXISTS '${chatDBUser}'@'${localAddress}' IDENTIFIED BY '${chatDBPass}';
-GRANT ALL PRIVILEGES ON ${chatName}.* TO '${chatDBUser}'@'${localAddress}';
-
-FLUSH PRIVILEGES;
-`;
-
+	// MongoDB doesn't require initial SQL setup like MariaDB did
+	// Databases are created automatically when first accessed
 
 	fs.writeFileSync('docker-compose.yml', ymlfile);
 	fs.writeFileSync('Dockerfile', dockerfile);
-	fs.writeFileSync('startup.sql', sqlfile);
 })()
 	.then(() => rl.close())
 	.catch(e => console.error(e))

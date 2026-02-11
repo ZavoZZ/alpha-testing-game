@@ -5,6 +5,8 @@ import ApplyToBody from '../utilities/apply-to-body';
 
 import { TokenContext } from '../utilities/token-provider';
 
+const config = require('../../config');
+
 const Reset = props => {
 	//params
 	const [params, setParams] = useSearchParams(); //the URLSearchParams API
@@ -67,7 +69,7 @@ const update = async (password, retype, params) => {
 		return ['Password is too short'];
 	}
 
-	const result = await fetch(`${process.env.AUTH_URI}/auth/reset?email=${params.get('email')}&token=${params.get('token')}`, {
+	const result = await fetch(`${config.AUTH_URI}/auth/reset?email=${params.get('email')}&token=${params.get('token')}`, {
 		method: 'PATCH',
 		headers: {
 			'Content-Type': 'application/json'

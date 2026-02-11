@@ -1,3 +1,5 @@
+const User = require('./User');
+
 module.exports = {
-	//import models
-}
+	User
+};

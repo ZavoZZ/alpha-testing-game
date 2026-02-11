@@ -3,25 +3,27 @@ import { Link } from 'react-router';
 
 import { TokenContext } from '../../utilities/token-provider';
 
+const config = require('../../../config');
+
 //TODO: make this an ACTUAL BUTTON
 const Logout = () => {
 	const authTokens = useContext(TokenContext);
 
 	return (
 		<>
-			{ /* Logout logs you out of the server too */ }
-			<Link to='/' onClick={async () => {
-				const result = await authTokens.tokenFetch(`${process.env.AUTH_URI}/auth/logout`, { //NOTE: this gets overwritten as a bugfix
-					method: 'DELETE'
-				});
+		{ /* Logout logs you out of the server too */ }
+		<Link to='/' onClick={async () => {
+			const result = await authTokens.tokenFetch(`${config.AUTH_URI}/auth/logout`, {
+				method: 'POST'  // Fixed: server expects POST, not DELETE
+			});
 
-				//any problems?
-				if (!result.ok) {
-					console.error(await result.text());
-				} else {
-					authTokens.setAccessToken('');
-				}
-			}}>Logout</Link>
+			//any problems?
+			if (!result.ok) {
+				console.error(await result.text());
+			} else {
+				authTokens.setAccessToken('');
+			}
+		}}>Logout</Link>
 		</>
 	);
 };

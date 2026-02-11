@@ -1,19 +1,30 @@
-# MERN-template
+# Alpha Testing Phase
 
-A website template using the MERN stack. It is geared towards Persistent Browser Based Games (think neopets), but is flexible enough for a number of different uses.
+A modern MERN stack application template for building persistent browser-based games and web applications.
 
-The primary technology involved is:
+## 🚀 Technology Stack
 
-* React
-* Nodejs
-* MariaDB (with Sequelize)
-* Docker (with docker compose)
+* **Frontend**: React 18 with modern hooks and context API
+* **Backend**: Node.js with Express
+* **Database**: MongoDB with Mongoose ODM
+* **Authentication**: JWT tokens with HttpOnly cookies
+* **Infrastructure**: Docker & Docker Compose
+* **Microservices**: Auth, News, and Chat servers
 
-This template is designed to support the development of persistent browser based games (PBBGs), but it, and it's component microservices, can be used elsewhere.
+This template is designed for persistent browser-based games (PBBGs) but is flexible enough for various web applications.
 
-This template is released under the zlib license (see LICENSE).
+**License**: zlib (see LICENSE)
 
-See the [github wiki](https://github.com/krgamestudios/MERN-template/wiki) for full documentation.
+## 📚 Documentation
+
+All project documentation is organized in the [`/docs/`](/docs/) folder:
+
+* **[Setup Guides](/docs/setup/)** - Deployment, configuration, and quick start
+* **[Architecture](/docs/architecture/)** - System design and technical architecture
+* **[Features](/docs/features/)** - Feature documentation (Admin Panel, Authentication, etc.)
+* **[Session Logs](/docs/session-logs/)** - Development notes organized by date
+
+For detailed documentation, visit the [docs folder](/docs/README.md).
 
 # Microservices
 
@@ -38,41 +49,59 @@ docker compose up --build
 
 To set up this template in development mode:
 
-1. Ensure mariadb is running in your development environment
-2. Run `mariadb tools/create_database.sql` as the root user
-3. Run `npm install`
-4. Run `cp .envdev .env` and enter your details into the `.env` file
-5. Execute `npm run dev`
-6. Navigate to `http://localhost:3001` in your web browser
-7. Repeat this process for each microservice (linked above)
+1. Ensure MongoDB is running in your development environment
+2. Run `npm install`
+3. Run `cp .envdev .env` and enter your details into the `.env` file
+4. Execute `npm run dev`
+5. Navigate to `http://localhost:3000` in your web browser
+6. Repeat this process for each microservice (linked above)
+
+For detailed setup instructions, see [`/docs/setup/QUICK_START.md`](/docs/setup/QUICK_START.md).
 
 # Features List
 
-- Mainly one language across the codebase (JavaScript)
-- Full documentation
-	- Setup tutorial
-- Fully Featured Account System (as a microservice)
-	- Email validation
-	- Logging in and out
-	- Account deletion
-	- Password management
-	- JSON web token authentication
-	- HttpOnly cookies for security
-	- Optional post validation hook
-- Fully Featured News Blog (as a microservice)
-	- Publish, edit or delete articles as needed
-	- Secured via admin panel
-- Fully Featured Chat System (as a microservice)
-	- Available when logged in
-	- Chat logs saved to the database
-	- Room-based chat (type `/room name` to access a specific room)
-- Moderation tools
-	- Permanently banning users
-	- Chat-muting users for a time period
-	- Users reporting offensive chat-content
-- Easy To Use Configuration Script
-	- Sets up everything via docker
-	- A default admin account (if desired)
+## Core Features
+- **Single Language**: JavaScript/Node.js across the entire stack
+- **Modern React**: Hooks, Context API, lazy loading, and code splitting
+- **MongoDB Integration**: NoSQL database with Mongoose ODM
+- **Docker Ready**: Complete Docker Compose setup for all services
+
+## Authentication System (Microservice)
+- Email validation and verification
+- Secure login/logout with JWT tokens
+- HttpOnly cookies for enhanced security
+- Password recovery and reset
+- Account deletion
+- Role-based access control (Admin/Moderator/User)
+
+## Admin Panel
+- **Modern UI**: Beautiful, responsive admin interface
+- **User Management**: View, create, ban, and delete users
+- **Role Management**: Grant admin or moderator privileges
+- **Real-time Statistics**: User count, admin count, banned users
+- **Database Access**: Secure, password-protected admin database viewer
+
+## News System (Microservice)
+- Publish, edit, and delete articles
+- Admin-controlled content management
+- Article browsing and reading
+
+## Chat System (Microservice)
+- Real-time chat when logged in
+- Persistent chat logs in database
+- Room-based chat system (`/room name`)
+- Popup chat interface
+
+## Moderation Tools
+- User banning system
+- Chat-mute functionality
+- User reporting for offensive content
+- Comprehensive moderation dashboard
+
+## Configuration
+- Easy-to-use configuration script
+- Environment-based settings
+- Optional default admin account creation
 
 # Coming Soon
 

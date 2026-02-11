@@ -3,14 +3,44 @@ require('dotenv').config();
 
 //libraries
 const path = require('path');
+const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
 
 //create the server
 const express = require('express');
 const app = express();
 const server = require('http').Server(app);
 
+//security middleware
+app.use((req, res, next) => {
+	// Security headers
+	res.setHeader('X-Content-Type-Options', 'nosniff');
+	res.setHeader('X-Frame-Options', 'DENY');
+	res.setHeader('X-XSS-Protection', '1; mode=block');
+	res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+	
+	// CORS - Allow access from any domain
+	const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'];
+	const origin = req.headers.origin;
+	
+	if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+		res.setHeader('Access-Control-Allow-Origin', origin || '*');
+	}
+	
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Game-Password');
+	res.setHeader('Access-Control-Allow-Credentials', 'true');
+	
+	if (req.method === 'OPTIONS') {
+		return res.status(200).end();
+	}
+	
+	next();
+});
+
 //config
 app.use(express.json());
+app.use(cookieParser());
 
 //handle compressed files (middleware)
 app.get('/{*any}.js', (req, res, next) => {
@@ -28,7 +58,162 @@ app.get('/{*any}.css', (req, res, next) => {
 });
 
 //database connection
-const database = require('./database');
+const { connectDB } = require('./database');
+
+//proxy to microservices
+const AUTH_URI = process.env.AUTH_URI || 'http://auth-server:3200';
+const NEWS_URI = process.env.NEWS_URI || 'http://news-server:3100';
+const CHAT_URI = process.env.CHAT_URI || 'http://chat-server:3300';
+
+// Proxy middleware for auth microservice
+app.use('/api/auth-service', async (req, res) => {
+	try {
+		const url = `${AUTH_URI}${req.url}`;
+		
+		const options = {
+			method: req.method,
+			headers: {
+				'Content-Type': 'application/json',
+				// Forward Authorization header (for JWT tokens)
+				...(req.headers.authorization && { 'Authorization': req.headers.authorization })
+			}
+		};
+		
+		// Add body for POST, PUT, PATCH
+		if (req.body && Object.keys(req.body).length > 0) {
+			options.body = JSON.stringify(req.body);
+		}
+		
+		const response = await fetch(url, options);
+
+		// Forward cookies
+		const cookies = response.headers.get('set-cookie');
+		if (cookies) {
+			res.setHeader('set-cookie', cookies);
+		}
+
+		// Get response text
+		const text = await response.text();
+		res.status(response.status).send(text);
+	} catch (error) {
+		console.error('Auth proxy error:', error);
+		res.status(500).send('Proxy error: ' + error.message);
+	}
+});
+
+// Proxy middleware for news microservice
+app.use('/api/news-service', async (req, res) => {
+	try {
+		const url = `${NEWS_URI}${req.url}`;
+		
+		const options = {
+			method: req.method,
+			headers: {
+				'Content-Type': 'application/json',
+				...(req.headers.authorization && { 'Authorization': req.headers.authorization })
+			}
+		};
+		
+		if (req.body && Object.keys(req.body).length > 0) {
+			options.body = JSON.stringify(req.body);
+		}
+		
+		const response = await fetch(url, options);
+		const text = await response.text();
+		res.status(response.status).send(text);
+	} catch (error) {
+		console.error('News proxy error:', error);
+		res.status(500).send('Proxy error: ' + error.message);
+	}
+});
+
+// Proxy middleware for chat microservice  
+app.use('/api/chat-service', async (req, res) => {
+	try {
+		const url = `${CHAT_URI}${req.url}`;
+		
+		const options = {
+			method: req.method,
+			headers: {
+				'Content-Type': 'application/json',
+				...(req.headers.authorization && { 'Authorization': req.headers.authorization })
+			}
+		};
+		
+		if (req.body && Object.keys(req.body).length > 0) {
+			options.body = JSON.stringify(req.body);
+		}
+		
+		const response = await fetch(url, options);
+		const text = await response.text();
+		res.status(response.status).send(text);
+	} catch (error) {
+		console.error('Chat proxy error:', error);
+		res.status(500).send('Proxy error: ' + error.message);
+	}
+});
+
+//password protection API
+const GAME_PASSWORD = process.env.GAME_PASSWORD || 'testjoc';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
+// Session storage (in-memory for simplicity, could use Redis for production)
+const activeSessions = new Map();
+
+app.post('/api/auth/verify', (req, res) => {
+	const { password } = req.body;
+	
+	if (password === GAME_PASSWORD) {
+		// Generate session token
+		const sessionToken = crypto.randomBytes(32).toString('hex');
+		const sessionData = {
+			createdAt: Date.now(),
+			expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+		};
+		
+		activeSessions.set(sessionToken, sessionData);
+		
+		res.json({ 
+			success: true, 
+			token: sessionToken,
+			message: 'Access granted'
+		});
+	} else {
+		res.status(401).json({ 
+			success: false, 
+			message: 'Invalid password'
+		});
+	}
+});
+
+app.post('/api/auth/validate', (req, res) => {
+	const { token } = req.body;
+	
+	if (!token) {
+		return res.status(401).json({ success: false, message: 'No token provided' });
+	}
+	
+	const session = activeSessions.get(token);
+	
+	if (session && session.expiresAt > Date.now()) {
+		res.json({ success: true, message: 'Session valid' });
+	} else {
+		if (session) {
+			activeSessions.delete(token);
+		}
+		res.status(401).json({ success: false, message: 'Session expired or invalid' });
+	}
+});
+
+app.post('/api/auth/logout', (req, res) => {
+	const { token } = req.body;
+	
+	if (token) {
+		activeSessions.delete(token);
+	}
+	
+	res.json({ success: true, message: 'Logged out' });
+});
 
 //send static files
 app.use('/', express.static(path.resolve(__dirname, '..', 'public')));
@@ -39,8 +224,11 @@ app.get('/{*any}', (req, res) => {
 });
 
 //startup
-server.listen(process.env.WEB_PORT || 3000, async (err) => {
-	await database.sync();
-	console.log(`listening to localhost:${process.env.WEB_PORT || 3000}`);
-	console.log(`database located at ${process.env.DB_HOSTNAME || '<default>'}:${process.env.DB_PORTNAME || '<default>'}`);
+server.listen(process.env.WEB_PORT || 3000, '0.0.0.0', async (err) => {
+	await connectDB();
+	console.log(`Server listening on 0.0.0.0:${process.env.WEB_PORT || 3000}`);
+	console.log(`Database connected to: ${process.env.DB_URI || 'mongodb://localhost:27017/game_db'}`);
+	console.log(`Game password protection: ${process.env.GAME_PASSWORD ? 'ENABLED' : 'DISABLED'}`);
+	console.log('---');
+	console.log('Access from external devices using: http://<SERVER_IP>:3000');
 });

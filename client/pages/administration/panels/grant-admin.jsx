@@ -48,7 +48,7 @@ const GrantAdmin = props => {
 };
 
 const handleButtonPress = async (username, tokenFetch, method) => {
-	const result = await tokenFetch(`${process.env.AUTH_URI}/admin/admin`, {
+	const result = await tokenFetch(`${config.AUTH_URI}/admin/admin`, {
 		method: method,
 		headers: {
 			'Content-Type': 'application/json'

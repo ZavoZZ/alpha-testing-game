@@ -7,6 +7,8 @@ import { TokenContext } from '../utilities/token-provider';
 
 import DeleteAccount from './panels/delete-account';
 
+const config = require('../../config');
+
 const Account = props => {
 	//context
 	const authTokens = useContext(TokenContext);
@@ -23,7 +25,7 @@ const Account = props => {
 
 	//grab the user's info
 	useEffect(() => {
-		authTokens.tokenFetch(`${process.env.AUTH_URI}/auth/account`)
+		authTokens.tokenFetch(`${config.AUTH_URI}/auth/account`)
 			.then(blob => blob.json())
 			.then(json => contactRef.current.checked = json.contact)
 			.catch(e => console.error(e))

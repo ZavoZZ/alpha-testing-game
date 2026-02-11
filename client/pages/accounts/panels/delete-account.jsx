@@ -2,6 +2,8 @@ import React, { useState, useContext, useRef } from 'react';
 
 import { TokenContext } from '../../utilities/token-provider';
 
+const config = require('../../../config');
+
 //DOCS: isolated the delete account button into it's own panel, so it can be easily moved as needed
 const DeleteAccount = props => {
 	const authTokens = useContext(TokenContext);
@@ -35,7 +37,7 @@ const DeleteAccount = props => {
 
 const handleSubmit = async (password, authTokens) => {
 	//schedule a deletion
-	const result = await authTokens.tokenFetch(`${process.env.AUTH_URI}/auth/account`, {
+	const result = await authTokens.tokenFetch(`${config.AUTH_URI}/auth/account`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

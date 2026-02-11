@@ -18,7 +18,7 @@ const NewsEditor = props => {
 
 	//run once
 	useEffect(() => {
-		fetch(`${process.env.NEWS_URI}/news/metadata?page_size=999`)
+		fetch(`${config.NEWS_URI}/news/metadata?page_size=999`)
 			.then(res => res.json())
 			.then(json => {
 				setArticles(json)
@@ -33,7 +33,7 @@ const NewsEditor = props => {
 				options={articles.map(article => { return { label: article.title, index: article.index }; })}
 				onChange={async ({index}) => {
 					//fetch this article
-					const result = await fetch(`${process.env.NEWS_URI}/news/archive/${index}`);
+					const result = await fetch(`${config.NEWS_URI}/news/archive/${index}`);
 
 					if (!result.ok) {
 						const err = `${result.status}: ${await result.text()}`;
@@ -91,7 +91,7 @@ const handleSubmit = async (title, author, body, index, tokenFetch) => {
 	body = body.trim();
 
 	//fetch POST json data
-	const result = await tokenFetch(`${process.env.NEWS_URI}/news/${index}`, {
+	const result = await tokenFetch(`${config.NEWS_URI}/news/${index}`, {
 		method: 'PATCH',
 		headers: {
 			'Content-Type': 'application/json'
@@ -114,7 +114,7 @@ const handleDelete = async (index, tokenFetch) => {
 	const conf = confirm('Are you sure you want to delete this article?');
 
 	if (conf) {
-		const result = await tokenFetch(`${process.env.NEWS_URI}/news/${index}`, {
+		const result = await tokenFetch(`${config.NEWS_URI}/news/${index}`, {
 			method: 'DELETE'
 		});
 

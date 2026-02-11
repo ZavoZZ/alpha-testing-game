@@ -39,7 +39,7 @@ const BanUser = props => {
 };
 
 const handleButtonPress = async (username, tokenFetch) => {
-	const result = await tokenFetch(`${process.env.AUTH_URI}/admin/banuser`, {
+	const result = await tokenFetch(`${config.AUTH_URI}/admin/banuser`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
