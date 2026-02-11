@@ -64,6 +64,7 @@ const { connectDB } = require('./database');
 const AUTH_URI = process.env.AUTH_URI || 'http://auth-server:3200';
 const NEWS_URI = process.env.NEWS_URI || 'http://news-server:3100';
 const CHAT_URI = process.env.CHAT_URI || 'http://chat-server:3300';
+const ECONOMY_URI = process.env.ECONOMY_URI || 'http://economy-server:3400';
 
 // Proxy middleware for auth microservice
 app.use('/api/auth-service', async (req, res) => {
@@ -215,11 +216,41 @@ app.post('/api/auth/logout', (req, res) => {
 	res.json({ success: true, message: 'Logged out' });
 });
 
-//economy routes (before static files)
-const economyRoutes = require('./routes/economy');
-app.use('/api/economy', economyRoutes);
+// Proxy middleware for economy microservice
+app.use('/api/economy', async (req, res) => {
+	try {
+		const url = `${ECONOMY_URI}${req.url}`;
+		
+		const options = {
+			method: req.method,
+			headers: {
+				'Content-Type': 'application/json',
+				// Forward Authorization header (critical for JWT!)
+				...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
+				// Forward X-Forwarded-For for rate limiting
+				...(req.headers['x-forwarded-for'] && { 'X-Forwarded-For': req.headers['x-forwarded-for'] })
+			}
+		};
+		
+		// Add body for POST, PUT, PATCH
+		if (req.body && Object.keys(req.body).length > 0) {
+			options.body = JSON.stringify(req.body);
+		}
+		
+		const response = await fetch(url, options);
+		const text = await response.text();
+		res.status(response.status).send(text);
+	} catch (error) {
+		console.error('Economy proxy error:', error);
+		res.status(500).json({
+			success: false,
+			error: 'Economy service unavailable',
+			message: error.message
+		});
+	}
+});
 
-console.log('[Server] ✅ Economy API routes registered at /api/economy/*');
+console.log('[Server] ✅ Economy API proxy registered at /api/economy/* → economy-server:3400');
 
 //send static files
 app.use('/', express.static(path.resolve(__dirname, '..', 'public')));

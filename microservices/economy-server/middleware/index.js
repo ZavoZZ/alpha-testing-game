@@ -1,12 +1,5 @@
 /**
- * =============================================================================
- * MIDDLEWARE EXPORTS - CENTRALIZED ACCESS
- * =============================================================================
- * 
- * Central export point for all server middleware.
- * 
- * @version 1.0.0
- * @date 2026-02-11
+ * Middleware exports for Economy Server
  */
 
 const {
@@ -26,7 +19,7 @@ module.exports = {
 	validateFinancialPayload,
 	economyRateLimiter,
 	extractClientIP,
-
+	
 	// Authentication
 	verifyToken,
 	verifyAdmin,

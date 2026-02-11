@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
-const { User, Treasury, Ledger } = require('../database/models');
+// Models - Using global models from server.js
+const User = global.User;
+const Treasury = global.Treasury;
+const Ledger = global.Ledger;
 const FinancialMath = require('./FinancialMath');
 
 /**

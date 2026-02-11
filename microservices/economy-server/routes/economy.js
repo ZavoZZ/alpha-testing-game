@@ -12,8 +12,8 @@ const {
 // Services
 const { EconomyEngine } = require('../services');
 
-// Models
-const { User } = require('../database/models');
+// Models - Using global models from server.js
+const User = global.User;
 
 /**
  * =============================================================================
