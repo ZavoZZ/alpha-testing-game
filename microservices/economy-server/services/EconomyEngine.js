@@ -269,7 +269,7 @@ class EconomyEngine {
 			}
 
 			// Calculate tax and net amount
-			const { taxWithheld, netAmount } = FinancialMath.calculateTax(
+			const { tax: taxWithheld, net: netAmount } = FinancialMath.calculateTax(
 				normalizedAmount,
 				taxRate
 			);
@@ -278,7 +278,7 @@ class EconomyEngine {
 
 			// Verify math (paranoid check)
 			const verifyGross = FinancialMath.add(netAmount, taxWithheld);
-			if (!FinancialMath.isEqual(verifyGross, normalizedAmount)) {
+			if (!FinancialMath.equals(verifyGross, normalizedAmount)) {
 				throw new Error(
 					`[EconomyEngine] CRITICAL: Tax calculation error. ` +
 					`Gross=${normalizedAmount} | Net=${netAmount} | Tax=${taxWithheld} | ` +
@@ -298,7 +298,7 @@ class EconomyEngine {
 			const newSenderBalance = FinancialMath.subtract(senderBalance, normalizedAmount);
 			
 			// Paranoid check: ensure no negative balance
-			if (!FinancialMath.isNonNegative(newSenderBalance)) {
+			if (!FinancialMath.isGreaterThanOrEqual(newSenderBalance, '0')) {
 				throw new Error(
 					`[EconomyEngine] CRITICAL: Sender balance would become negative. ` +
 					`Current=${senderBalance} | Deduct=${normalizedAmount} | Result=${newSenderBalance}`
