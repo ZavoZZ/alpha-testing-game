@@ -27,8 +27,11 @@ const connectDB = async () => {
 	}
 };
 
-// User Model
+// User Model (SYNCHRONIZED with main app - includes Economy fields!)
 const userSchema = new mongoose.Schema({
+	// =====================================================================
+	// AUTHENTICATION & IDENTITY
+	// =====================================================================
 	username: {
 		type: String,
 		required: true,
@@ -65,6 +68,74 @@ const userSchema = new mongoose.Schema({
 	lastLogin: {
 		type: Date,
 		default: null
+	},
+	
+	// =====================================================================
+	// ECONOMY BALANCES (Decimal128 for precision)
+	// =====================================================================
+	balance_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	balance_gold: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	balance_ron: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	
+	// =====================================================================
+	// TAX RESERVE BALANCES (for admin/system users)
+	// =====================================================================
+	collected_transfer_tax_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	collected_market_tax_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	collected_work_tax_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	
+	// =====================================================================
+	// SECURITY & GAMEPLAY
+	// =====================================================================
+	is_frozen_for_fraud: {
+		type: Boolean,
+		default: false
+	},
+	productivity_multiplier: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('1.0000')
+	},
+	
+	// =====================================================================
+	// STATISTICS
+	// =====================================================================
+	total_transactions: {
+		type: Number,
+		default: 0
+	},
+	total_volume_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000')
+	},
+	
+	// =====================================================================
+	// TIMESTAMPS
+	// =====================================================================
+	last_transaction_at: {
+		type: Date,
+		default: null
+	},
+	economy_joined_at: {
+		type: Date,
+		default: Date.now
 	}
 }, {
 	timestamps: true

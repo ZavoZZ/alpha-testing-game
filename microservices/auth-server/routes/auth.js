@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const SECRET_ACCESS = process.env.SECRET_ACCESS || 'default_secret_change_this';
 const SECRET_REFRESH = process.env.SECRET_REFRESH || 'default_refresh_secret_change_this';
@@ -46,15 +47,38 @@ module.exports = (User) => {
 				return res.status(409).send('User with this email or username already exists');
 			}
 
-			const hashedPassword = await bcrypt.hash(password, 10);
+		const hashedPassword = await bcrypt.hash(password, 10);
 
-			const user = await User.create({
-				email: email.toLowerCase(),
-				username,
-				password: hashedPassword,
-				role: 'user',
-				isActive: true,
-			});
+		const user = await User.create({
+			// Authentication & Identity
+			email: email.toLowerCase(),
+			username,
+			password: hashedPassword,
+			role: 'user',
+			isActive: true,
+			
+			// Economy Balances (CRITICAL: Initialize for new players!)
+			balance_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+			balance_gold: mongoose.Types.Decimal128.fromString('0.0000'),
+			balance_ron: mongoose.Types.Decimal128.fromString('0.0000'),
+			
+			// Tax Reserve Balances (for admin/system users)
+			collected_transfer_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+			collected_market_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+			collected_work_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+			
+			// Security & Gameplay
+			is_frozen_for_fraud: false,
+			productivity_multiplier: mongoose.Types.Decimal128.fromString('1.0000'),
+			
+			// Statistics
+			total_transactions: 0,
+			total_volume_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+			
+			// Timestamps
+			last_transaction_at: null,
+			economy_joined_at: new Date()
+		});
 
 			console.log(`New user registered: ${username} (${email})`);
 			res.status(201).send('Account created successfully! Please login.');
