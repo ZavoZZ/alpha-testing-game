@@ -68,12 +68,12 @@ function verifyToken(req, res, next) {
 			});
 		}
 
-		const token = parts[1];
+	const token = parts[1];
 
-		// Verify token
-		const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-		
-		jwt.verify(token, JWT_SECRET, (err, decoded) => {
+	// Verify token - CRITICAL: Use same secret as Auth-Server (SECRET_ACCESS)
+	const JWT_SECRET = process.env.SECRET_ACCESS || process.env.JWT_SECRET || 'your_jwt_secret_key_change_this';
+	
+	jwt.verify(token, JWT_SECRET, (err, decoded) => {
 			if (err) {
 				if (err.name === 'TokenExpiredError') {
 					return res.status(401).json({
@@ -102,12 +102,13 @@ function verifyToken(req, res, next) {
 				});
 			}
 
-			// Token is valid - attach user info to request
-			req.user = {
-				userId: decoded.userId,
-				username: decoded.username,
-				role: decoded.role || 'user'
-			};
+		// Token is valid - attach user info to request
+		// Auth-Server uses 'id' field, NOT 'userId'!
+		req.user = {
+			userId: decoded.id || decoded.userId, // Auth-Server uses 'id'
+			username: decoded.username,
+			role: decoded.role || 'user'
+		};
 
 			console.log('[Auth] ✅ Token verified for user:', req.user.username);
 

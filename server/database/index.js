@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
 	try {
-		const uri = process.env.DB_URI || 'mongodb://localhost:27017/game_db';
+		// CRITICAL: Use auth_db where users are stored (shared with Auth-Server)
+		const uri = process.env.DB_URI || 'mongodb://localhost:27017/auth_db';
 		
 		await mongoose.connect(uri, {
 			// These options are set by default in Mongoose 6+
