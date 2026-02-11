@@ -108,6 +108,21 @@ ledgerSchema.index({ receiver: 1, createdAt: -1 });
 ledgerSchema.index({ current_hash: 1 });
 ledgerSchema.index({ block_number: 1 });
 
+// Static method: Get user transaction history
+ledgerSchema.statics.getUserHistory = async function(userId, limit = 50) {
+	return await this.find({
+		$or: [
+			{ sender: userId },
+			{ receiver: userId }
+		]
+	})
+	.sort({ createdAt: -1 })
+	.limit(limit)
+	.populate('sender', 'username')
+	.populate('receiver', 'username')
+	.lean();
+};
+
 const Ledger = mongoose.model('Ledger', ledgerSchema);
 
 // Export models to be used by services
