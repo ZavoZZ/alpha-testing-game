@@ -15,9 +15,20 @@ const {
 	extractClientIP
 } = require('./AntiFraudShield');
 
+const {
+	verifyToken,
+	verifyAdmin,
+	verifyModerator
+} = require('./auth');
+
 module.exports = {
 	// Anti-Fraud Shield
 	validateFinancialPayload,
 	economyRateLimiter,
-	extractClientIP
+	extractClientIP,
+
+	// Authentication
+	verifyToken,
+	verifyAdmin,
+	verifyModerator
 };

@@ -215,6 +215,12 @@ app.post('/api/auth/logout', (req, res) => {
 	res.json({ success: true, message: 'Logged out' });
 });
 
+//economy routes (before static files)
+const economyRoutes = require('./routes/economy');
+app.use('/api/economy', economyRoutes);
+
+console.log('[Server] ✅ Economy API routes registered at /api/economy/*');
+
 //send static files
 app.use('/', express.static(path.resolve(__dirname, '..', 'public')));
 
