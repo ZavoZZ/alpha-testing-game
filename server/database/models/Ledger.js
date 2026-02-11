@@ -382,13 +382,18 @@ ledgerSchema.statics.createTransaction = async function(transactionData, session
 	// Create transaction with previous_hash
 	const transaction = new this({
 		...transactionData,
-		previous_hash
+		previous_hash,
+		createdAt: new Date() // Set timestamp explicitly
 	});
 	
-	// Hash will be computed in pre-save hook
+	// Compute hash BEFORE validation (required field)
+	transaction.current_hash = transaction.computeTransactionHash();
+	
+	// Save with computed hash
 	await transaction.save({ session });
 	
 	console.log(`[LEDGER] Transaction ${transaction.transaction_id} created and linked to chain`);
+	console.log(`[LEDGER] Hash: ${transaction.current_hash.substring(0, 16)}...`);
 	
 	return transaction;
 };
@@ -645,6 +650,11 @@ ledgerSchema.statics.getEconomicStats = async function(currency = null) {
  */
 ledgerSchema.pre('save', async function(next) {
 	if (this.isNew) {
+		// Ensure createdAt is set before computing hash
+		if (!this.createdAt) {
+			this.createdAt = new Date();
+		}
+		
 		// Compute the transaction hash
 		this.current_hash = this.computeTransactionHash();
 		
