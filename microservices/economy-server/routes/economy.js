@@ -636,6 +636,243 @@ const { WorkService, WorkCalculator } = require('../services');
 const Company = global.Company;
 
 /**
+ * GET /work/status
+ * Get current work status and salary preview (without executing)
+ * 
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Read-only (no state changes)
+ * 
+ * PURPOSE:
+ * - Frontend needs to know: Can I work? How much will I earn?
+ * - Show paycheck preview (before executing)
+ * - Check cooldown status
+ * - Check company solvency
+ * 
+ * STATES:
+ * - No job: User needs to get hired
+ * - Has job + Can work: Show salary preview
+ * - Has job + Cooldown: Show time remaining
+ * - Has job + Company insolvent: Warn user
+ * - Has job + Low energy: Warn user
+ * 
+ * @returns {object} - Complete work status
+ */
+router.get('/work/status', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		
+		// Load user
+		const user = await User.findById(userId);
+		
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				error: 'User not found'
+			});
+		}
+		
+		// ====================================================================
+		// STEP 1: Check if user has a job
+		// ====================================================================
+		
+		let company = null;
+		
+		if (user.employer_id) {
+			company = await Company.findById(user.employer_id);
+		}
+		
+		// If no job or company doesn't exist, suggest government job
+		if (!company) {
+			const govCompany = await Company.findGovernmentEmployer();
+			
+			return res.json({
+				success: true,
+				hasJob: false,
+				message: 'You are unemployed. Sign a contract to start working!',
+				suggestedEmployer: govCompany ? {
+					id: govCompany._id,
+					name: govCompany.name,
+					type: govCompany.type,
+					wage_offer: govCompany.wage_offer,
+					is_government: govCompany.is_government
+				} : null
+			});
+		}
+		
+		// ====================================================================
+		// STEP 2: User has a job - Check eligibility
+		// ====================================================================
+		
+		const eligibility = WorkCalculator.validateWorkEligibility(user);
+		
+		// ====================================================================
+		// STEP 3: Calculate salary preview (if eligible)
+		// ====================================================================
+		
+		let salaryPreview = null;
+		
+		if (eligibility.canWork) {
+			const salaryCheck = WorkCalculator.calculateSalaryCheck(user);
+			
+			if (salaryCheck.canWork) {
+				// Adjust for company's wage offer (not base salary)
+				const FinancialMath = require('../services/FinancialMath');
+				
+				const grossSalary = FinancialMath.multiply(
+					company.wage_offer,
+					salaryCheck.breakdown.modifiers.energyFactor
+				);
+				const grossSalary2 = FinancialMath.multiply(
+					grossSalary,
+					salaryCheck.breakdown.modifiers.happinessFactor
+				);
+				const grossSalaryFinal = FinancialMath.multiply(
+					grossSalary2,
+					salaryCheck.breakdown.modifiers.productivityMultiplier
+				);
+				const grossSalaryRounded = FinancialMath.round(grossSalaryFinal, 4);
+				
+				const gameConstants = require('../config/gameConstants');
+				const governmentTax = FinancialMath.multiply(
+					grossSalaryRounded,
+					gameConstants.WORK.INCOME_TAX_PERCENTAGE
+				);
+				const governmentTaxRounded = FinancialMath.round(governmentTax, 4);
+				
+				const netSalary = FinancialMath.subtract(grossSalaryRounded, governmentTaxRounded);
+				const netSalaryRounded = FinancialMath.round(netSalary, 4);
+				
+				salaryPreview = {
+					base_wage: company.wage_offer,
+					gross_estimated: grossSalaryRounded,
+					tax_estimated: governmentTaxRounded,
+					net_estimated: netSalaryRounded,
+					modifiers: salaryCheck.breakdown.modifiers,
+					efficiency: salaryCheck.breakdown.efficiency,
+					energy_cost: gameConstants.WORK.ENERGY_COST
+				};
+			}
+		}
+		
+		// ====================================================================
+		// STEP 4: Check company solvency
+		// ====================================================================
+		
+		const companyCanPay = company.canAffordSalary(company.wage_offer);
+		
+		// ====================================================================
+		// STEP 5: Calculate next work time (if cooldown active)
+		// ====================================================================
+		
+		let cooldown = null;
+		
+		if (user.last_work_at) {
+			const cooldownCheck = WorkCalculator.checkCooldown(user.last_work_at);
+			
+			if (!cooldownCheck.canWork) {
+				cooldown = {
+					is_ready: false,
+					next_available_at: new Date(
+						new Date(user.last_work_at).getTime() + 
+						(gameConstants.WORK.COOLDOWN_HOURS * 60 * 60 * 1000)
+					),
+					time_remaining_ms: cooldownCheck.cooldownRemaining,
+					time_remaining_formatted: cooldownCheck.cooldownRemainingFormatted
+				};
+			} else {
+				cooldown = {
+					is_ready: true,
+					next_available_at: null,
+					time_remaining_ms: 0,
+					time_remaining_formatted: '0h 0m'
+				};
+			}
+		} else {
+			// Never worked before
+			cooldown = {
+				is_ready: true,
+				next_available_at: null,
+				time_remaining_ms: 0,
+				time_remaining_formatted: '0h 0m'
+			};
+		}
+		
+		// ====================================================================
+		// STEP 6: Build comprehensive status response
+		// ====================================================================
+		
+		res.json({
+			success: true,
+			hasJob: true,
+			
+			// Company info
+			company: {
+				id: company._id,
+				name: company.name,
+				type: company.type,
+				wage_offer: company.wage_offer,
+				funds: company.funds_euro,
+				can_afford_salary: companyCanPay,
+				status: company.status
+			},
+			
+			// User stats
+			player: {
+				energy: user.energy,
+				happiness: user.happiness,
+				health: user.health,
+				productivity: user.productivity_multiplier,
+				balance: user.balance_euro,
+				total_shifts_worked: user.total_shifts_worked
+			},
+			
+			// Work eligibility
+			canWork: eligibility.canWork && companyCanPay,
+			blockedReason: !eligibility.canWork ? eligibility.reason : 
+			                !companyCanPay ? 'COMPANY_INSOLVENT' : null,
+			message: !eligibility.canWork ? eligibility.message :
+			         !companyCanPay ? `${company.name} cannot afford to pay your salary. Contact the owner!` :
+			         'Ready to work!',
+			
+			// Cooldown status
+			cooldown: cooldown,
+			
+			// Salary preview (if can work)
+			salary_preview: salaryPreview,
+			
+			// Warnings
+			warnings: [
+				user.energy < 50 ? {
+					type: 'EXHAUSTION',
+					message: `Low energy (${user.energy}/100). You'll earn ${(parseFloat(salaryPreview?.modifiers?.energyFactor || 0) * 100).toFixed(0)}% salary.`,
+					severity: 'warning'
+				} : null,
+				user.happiness < 20 ? {
+					type: 'DEPRESSION',
+					message: `Very low happiness (${user.happiness}/100). Severe productivity penalty!`,
+					severity: 'critical'
+				} : null,
+				!companyCanPay ? {
+					type: 'INSOLVENCY',
+					message: `${company.name} has insufficient funds (€${company.funds_euro}).`,
+					severity: 'critical'
+				} : null
+			].filter(Boolean)
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Work status error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to get work status',
+			message: error.message
+		});
+	}
+});
+
+/**
  * POST /work
  * Execute a work shift (earn salary from employer company)
  * 

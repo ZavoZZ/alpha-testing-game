@@ -4,6 +4,7 @@ import { Link, Navigate } from 'react-router';
 import ApplyToBody from './utilities/apply-to-body';
 import { TokenContext } from './utilities/token-provider';
 import Logout from './accounts/panels/logout';
+import WorkStation from './panels/WorkStation';  // Module 2.2.C
 
 import '../styles/modern-game.css';
 
@@ -45,20 +46,32 @@ const Dashboard = props => {
 			</div>
 
 			<div style={styles.container}>
+				{/* Welcome Header */}
+				<div className="glass-container animate-fade-in" style={styles.welcomeCard}>
+					<h1 className="gaming-title" style={{fontSize: '48px', marginBottom: '8px', textAlign: 'center'}}>
+						Welcome, <span style={styles.username}>{payload.username || 'Player'}</span>!
+					</h1>
+					<p style={{fontSize: '16px', color: '#aaa', textAlign: 'center', marginBottom: '32px'}}>
+						🎮 Alpha Testing Game - Module 2.2 Active
+					</p>
+				</div>
+				
+				{/* WorkStation Panel (Module 2.2.C) */}
+				<div style={{marginTop: '32px'}}>
+					<WorkStation />
+				</div>
+				
 				{/* Work in Progress Section */}
-				<div className="glass-container animate-fade-in" style={styles.wipCard}>
+				<div className="glass-container animate-fade-in" style={{...styles.wipCard, marginTop: '32px'}}>
 					<div style={styles.header}>
 						<div style={styles.iconContainer} className="animate-bounce">
 							<div style={styles.icon}>🚧</div>
 						</div>
-						<h1 className="gaming-title animate-slide-up" style={{fontSize: '56px', marginBottom: '16px', animationDelay: '0.1s'}}>
-							Work in Progress
-						</h1>
-						<p className="gaming-subtitle animate-slide-up" style={{fontSize: '20px', marginBottom: '24px', animationDelay: '0.2s'}}>
-							Welcome, <span style={styles.username}>{payload.username || 'Player'}</span>!
-						</p>
-						<p style={styles.description} className="animate-slide-up" style={{animationDelay: '0.3s'}}>
-							🎮 Jocul este în dezvoltare activă. Revino curând pentru experiențe epice!
+						<h2 className="gaming-subtitle" style={{fontSize: '32px', marginBottom: '16px'}}>
+							More Features Coming Soon
+						</h2>
+						<p style={styles.description}>
+							🎮 More game modules are in active development!
 						</p>
 					</div>
 
@@ -154,6 +167,11 @@ const styles = {
 		position: 'relative',
 		zIndex: 1,
 		gap: '20px',
+	},
+	welcomeCard: {
+		maxWidth: '900px',
+		width: '100%',
+		padding: '32px 48px',
 	},
 	wipCard: {
 		maxWidth: '900px',
