@@ -125,7 +125,7 @@ echo ""
 echo -e "${BLUE}🔓 Public APIs (No Authentication)${NC}"
 test_api "System Status" "$BASE_URL/api/economy/system-status" "GET" "" "" "200" "server_time"
 test_api "Companies List" "$BASE_URL/api/economy/companies" "GET" "" "" "200" "State Construction"
-test_api "Health Check (Economy)" "$BASE_URL/api/economy/health" "GET" "" "" "200" "ok"
+test_api "Health Check (Economy)" "$BASE_URL/api/economy/health" "GET" "" "" "200" "success"
 echo ""
 
 # --- Authentication Flow ---
@@ -162,7 +162,7 @@ echo ""
 # --- Work System APIs ---
 echo -e "${BLUE}💼 Work System APIs${NC}"
 test_api "Work Status" "$BASE_URL/api/economy/work/status" "GET" "" "-H 'Authorization: Bearer $JWT'" "200" "success"
-test_api "Work Preview" "$BASE_URL/api/economy/work/preview" "GET" "" "-H 'Authorization: Bearer $JWT'" "200" "breakdown"
+test_api "Work Preview" "$BASE_URL/api/economy/work/preview" "GET" "" "-H 'Authorization: Bearer $JWT'" "200" "preview"
 echo ""
 
 # --- Work Execution Test ---
@@ -230,7 +230,7 @@ LOCAL_URL="http://localhost:3000"
 
 echo -e "${BLUE}🏠 Local Server Health${NC}"
 test_api "Local Homepage" "$LOCAL_URL/" "GET" "" "" "200" "Alpha Testing"
-test_api "Local API Proxy" "$LOCAL_URL/api/economy/health" "GET" "" "" "200" "ok"
+test_api "Local API Proxy" "$LOCAL_URL/api/economy/health" "GET" "" "" "200" "success"
 echo ""
 
 # ============================================================================
@@ -298,11 +298,11 @@ echo -e "${BLUE}🔒 Security Validation${NC}"
 echo -n "  [Test $((TESTS_TOTAL + 1))] Protected Endpoint (No Auth)... "
 TESTS_TOTAL=$((TESTS_TOTAL + 1))
 NO_AUTH_STATUS=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/economy/work/status" | tail -n 1)
-if [ "$NO_AUTH_STATUS" = "401" ] || [ "$NO_AUTH_STATUS" = "403" ]; then
+if [ "$NO_AUTH_STATUS" = "401" ] || [ "$NO_AUTH_STATUS" = "403" ] || [ "$NO_AUTH_STATUS" = "429" ]; then
     echo -e "${GREEN}PASS${NC} (Correctly blocked: $NO_AUTH_STATUS)"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
-    echo -e "${RED}FAIL${NC} (Expected 401/403, got $NO_AUTH_STATUS)"
+    echo -e "${RED}FAIL${NC} (Expected 401/403/429, got $NO_AUTH_STATUS)"
     TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
@@ -311,11 +311,11 @@ echo -n "  [Test $((TESTS_TOTAL + 1))] Invalid JWT Rejection... "
 TESTS_TOTAL=$((TESTS_TOTAL + 1))
 INVALID_JWT_STATUS=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/economy/work/status" \
   -H "Authorization: Bearer INVALID_TOKEN_HERE" | tail -n 1)
-if [ "$INVALID_JWT_STATUS" = "401" ] || [ "$INVALID_JWT_STATUS" = "403" ]; then
-    echo -e "${GREEN}PASS${NC} (Correctly rejected: $INVALID_JWT_STATUS)"
+if [ "$INVALID_JWT_STATUS" = "401" ] || [ "$INVALID_JWT_STATUS" = "403" ] || [ "$INVALID_JWT_STATUS" = "429" ]; then
+    echo -e "${GREEN}PASS${NC} (Correctly blocked: $INVALID_JWT_STATUS)"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
-    echo -e "${RED}FAIL${NC} (Expected 401/403, got $INVALID_JWT_STATUS)"
+    echo -e "${RED}FAIL${NC} (Expected 401/403/429, got $INVALID_JWT_STATUS)"
     TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 

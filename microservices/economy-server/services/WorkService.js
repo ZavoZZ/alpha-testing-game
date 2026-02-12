@@ -280,12 +280,12 @@ class WorkService {
 			// TRANSACTION STEP 3: Collect government tax
 			// ================================================================
 			
-			console.log('[WorkService] 🏛️  Collecting government tax...');
-			
-			const treasury = await Treasury.findOne({ session });
-			if (!treasury) {
-				throw new Error('Treasury not found');
-			}
+		console.log('[WorkService] 🏛️  Collecting government tax...');
+		
+		const treasury = await Treasury.findOne().session(session);
+		if (!treasury) {
+			throw new Error('Treasury not found');
+		}
 			
 			treasury.collected_work_tax_euro = FinancialMath.add(
 				treasury.collected_work_tax_euro,
@@ -302,11 +302,11 @@ class WorkService {
 			
 			// ================================================================
 			// TRANSACTION STEP 4: Pay master (if exists)
-			// ================================================================
+		// ================================================================
+		
+		if (masterUser && FinancialMath.isGreaterThan(masterTaxRounded, '0.0000')) {
+			console.log('[WorkService] 👑 Paying master referral bonus...');
 			
-			if (masterUser && FinancialMath.compare(masterTaxRounded, '0.0000') > 0) {
-				console.log('[WorkService] 👑 Paying master referral bonus...');
-				
 				masterUser.balance_euro = FinancialMath.add(
 					masterUser.balance_euro,
 					masterTaxRounded
@@ -395,11 +395,11 @@ class WorkService {
 					gross_salary: grossSalaryRounded
 				}
 			}], { session });
-			
-			// Ledger: Worker → Master (referral bonus) - if applicable
-			if (masterUser && FinancialMath.compare(masterTaxRounded, '0.0000') > 0) {
-				await Ledger.create([{
-					type: 'REFERRAL_BONUS',
+		
+		// Ledger: Worker → Master (referral bonus) - if applicable
+		if (masterUser && FinancialMath.isGreaterThan(masterTaxRounded, '0.0000')) {
+			await Ledger.create([{
+				type: 'REFERRAL_BONUS',
 					from_user: user._id,
 					to_user: masterUser._id,
 					amount_euro: masterTaxRounded,

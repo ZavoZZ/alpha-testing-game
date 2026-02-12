@@ -749,11 +749,11 @@ router.get('/work/status', async (req, res) => {
 			}
 		}
 		
-		// ====================================================================
-		// STEP 4: Check company solvency
-		// ====================================================================
-		
-		const companyCanPay = company.canAffordSalary(company.wage_offer);
+	// ====================================================================
+	// STEP 4: Check company solvency
+	// ====================================================================
+	
+	const companyCanPay = company.canAffordSalary(company.wage_offer.toString());
 		
 		// ====================================================================
 		// STEP 5: Calculate next work time (if cooldown active)

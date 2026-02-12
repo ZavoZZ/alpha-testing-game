@@ -366,7 +366,7 @@ companySchema.methods.canAffordSalary = function(grossSalary) {
 	
 	// Compare company funds with required salary
 	// funds_euro >= grossSalary
-	return FinancialMath.compare(this.funds_euro, grossSalary) >= 0;
+	return FinancialMath.isGreaterThanOrEqual(this.funds_euro, grossSalary);
 };
 
 /**
@@ -390,7 +390,7 @@ companySchema.methods.deductSalary = function(grossSalary) {
 	this.total_shifts_completed += 1;
 	
 	// Check if company is now insolvent
-	if (FinancialMath.compare(this.funds_euro, '0.0000') <= 0) {
+	if (FinancialMath.isLessThanOrEqual(this.funds_euro, '0.0000')) {
 		this.status = 'INSOLVENT';
 		this.last_insolvency_at = new Date();
 	}
