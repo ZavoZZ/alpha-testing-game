@@ -15,6 +15,8 @@ const TokenProvider = props => {
 	const forceLogout = () => {
 		localStorage.removeItem("accessToken");
 		setAccessToken("");
+		// BUGFIX: Redirect to login when session expires
+		window.location.href = '/login';
 	};
 
 	//make the access token persist between reloads

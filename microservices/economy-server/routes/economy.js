@@ -463,97 +463,18 @@ router.post('/transfer', validateFinancialPayload, async (req, res) => {
 // =============================================================================
 // ROUTE: POST /api/economy/work
 // =============================================================================
-
-/**
- * Collect salary from work (SYSTEM pays user)
- * 
- * SECURITY:
- * - Receiver is ALWAYS req.user (from JWT) ← SERVER-SIDE ✅
- * - Sender is SYSTEM (special account) ← Cannot be faked ✅
- * - 15% tax is automatically deducted ← SERVER-SIDE ✅
- * 
- * @param {string} amount - Salary amount (string for precision)
- * @param {string} currency - EURO, GOLD, or RON
- * @param {string} description - Work description
- * @returns {object} - Transaction result
- */
-router.post('/work', validateFinancialPayload, async (req, res) => {
-	try {
-		// SECURITY: Receiver is ALWAYS the logged-in user
-		const receiverId = req.user.userId;
-
-		const { amount, currency, description } = req.body;
-
-		// Validation: currency is required
-		if (!currency) {
-			return res.status(400).json({
-				success: false,
-				error: 'Validation error',
-				message: 'Currency is required',
-				code: 'MISSING_CURRENCY'
-			});
-		}
-
-		// Validate currency
-		const validCurrencies = ['EURO', 'GOLD', 'RON'];
-		if (!validCurrencies.includes(currency.toUpperCase())) {
-			return res.status(400).json({
-				success: false,
-				error: 'Invalid currency',
-				message: 'Currency must be EURO, GOLD, or RON',
-				code: 'INVALID_CURRENCY'
-			});
-		}
-
-		// Get SYSTEM account (special sender for work payments)
-		const systemUser = await User.findOne({ username: 'SYSTEM' });
-
-		if (!systemUser) {
-			return res.status(500).json({
-				success: false,
-				error: 'System error',
-				message: 'SYSTEM account not found',
-				code: 'NO_SYSTEM_ACCOUNT'
-			});
-		}
-
-		// Execute ATOMIC transaction (SERVER-SIDE)
-		// Tax: 15% for WORK transactions
-		const result = await EconomyEngine.executeAtomicTransaction({
-			senderId: systemUser._id.toString(),     // ← SYSTEM pays
-			receiverId: receiverId,                  // ← FROM JWT (unhackable)
-			amountStr: amount,
-			currency: currency.toUpperCase(),
-			transactionType: 'WORK',                 // ← 15% tax
-			description: description || 'Work salary',
-			ipAddress: extractClientIP(req),
-			userAgent: req.headers['user-agent']
-		});
-
-		console.log('[Economy] ✅ Work payment successful:', {
-			user: req.user.username,
-			amount,
-			currency,
-			tax: result.amounts.tax
-		});
-
-		res.json({
-			success: true,
-			data: result,
-			message: 'Salary collected successfully'
-		});
-
-	} catch (error) {
-		console.error('[Economy] ❌ Work payment error:', error);
-
-		res.status(400).json({
-			success: false,
-			error: 'Work payment failed',
-			message: error.message,
-			code: 'WORK_ERROR'
-		});
-	}
-});
+// 
+// ⚠️ NOTE: This OLD endpoint has been REMOVED and replaced with Module 2.2.B
+// The NEW /work endpoint is defined below (around line 965) and uses WorkService
+// which handles:
+// - Company-to-Player transactions (not SYSTEM-to-Player)
+// - Auto-hire to government company if unemployed
+// - Complex salary calculations with penalties
+// - Tax splitting (government + master/referral)
+// - ACID transactions with proper ledger entries
+// 
+// This space intentionally left blank to avoid duplicate routes.
+// =============================================================================
 
 // =============================================================================
 // ROUTE: POST /api/economy/market
@@ -1056,12 +977,12 @@ router.get('/work/preview', async (req, res) => {
 			reason: eligibility.reason,
 			message: eligibility.message,
 			
-			company: {
-				name: company.name,
-				type: company.type,
-				wage_offer: company.wage_offer,
-				has_funds: company.canAffordSalary(company.wage_offer)
-			},
+		company: {
+			name: company.name,
+			type: company.type,
+			wage_offer: company.wage_offer,
+			has_funds: company.canAffordSalary(company.wage_offer.toString())
+		},
 			
 			preview: salaryCheck.canWork ? {
 				gross_estimated: salaryCheck.breakdown.grossSalary,
