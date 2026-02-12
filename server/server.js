@@ -43,14 +43,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 //handle compressed files (middleware)
-app.get('/{*any}.js', (req, res, next) => {
+app.get('*.js', (req, res, next) => {
 	req.url = req.url + '.gz';
 	res.set('Content-Encoding', 'gzip');
 	res.set('Content-Type', 'text/javascript');
 	next();
 });
 
-app.get('/{*any}.css', (req, res, next) => {
+app.get('*.css', (req, res, next) => {
 	req.url = req.url + '.gz';
 	res.set('Content-Encoding', 'gzip');
 	res.set('Content-Type', 'text/css');
@@ -70,6 +70,7 @@ const ECONOMY_URI = process.env.ECONOMY_URI || 'http://economy-server:3400';
 app.use('/api/auth-service', async (req, res) => {
 	try {
 		const url = `${AUTH_URI}${req.url}`;
+		console.log(`[Auth Proxy] ${req.method} ${req.url} → ${url}`);
 		
 		const options = {
 			method: req.method,
@@ -95,9 +96,10 @@ app.use('/api/auth-service', async (req, res) => {
 
 		// Get response text
 		const text = await response.text();
+		console.log(`[Auth Proxy] Response status: ${response.status}`);
 		res.status(response.status).send(text);
 	} catch (error) {
-		console.error('Auth proxy error:', error);
+		console.error('[Auth Proxy] ❌ Error:', error.message);
 		res.status(500).send('Proxy error: ' + error.message);
 	}
 });
@@ -255,8 +257,12 @@ console.log('[Server] ✅ Economy API proxy registered at /api/economy/* → eco
 //send static files
 app.use('/', express.static(path.resolve(__dirname, '..', 'public')));
 
-//fallback to the index file
-app.get('/{*any}', (req, res) => {
+//fallback to the index file (only for non-API routes)
+app.get('*', (req, res) => {
+	// Don't serve index.html for API routes
+	if (req.url.startsWith('/api/')) {
+		return res.status(404).send('API endpoint not found');
+	}
 	res.sendFile(path.resolve(__dirname, '..', 'public' , 'index.html'));
 });
 

@@ -91,9 +91,11 @@ module.exports = (User) => {
 	// POST /login
 	router.post('/login', async (req, res) => {
 		try {
+			console.log('[Login] Received request body:', req.body);
 			const { email, password } = req.body;
 
 			if (!email || !password) {
+				console.log('[Login] Missing email or password');
 				return res.status(400).send('Email and password are required');
 			}
 
