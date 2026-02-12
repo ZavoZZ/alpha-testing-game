@@ -629,6 +629,336 @@ router.get('/history', async (req, res) => {
 });
 
 // =============================================================================
+// MODULE 2.2.B: WORK SYSTEM - CORPORATE INFRASTRUCTURE
+// =============================================================================
+
+const { WorkService, WorkCalculator } = require('../services');
+const Company = global.Company;
+
+/**
+ * POST /work
+ * Execute a work shift (earn salary from employer company)
+ * 
+ * SECURITY:
+ * - Requires JWT authentication
+ * - 24-hour cooldown (one shift per day)
+ * - Minimum energy requirement (10)
+ * 
+ * ECONOMICS:
+ * - Company pays from its own funds (zero-sum economy)
+ * - If company can't pay → Insolvency error
+ * - Taxes collected (government + master/referral)
+ * - Energy consumed (10 per shift)
+ * 
+ * @returns {object} - Work result with earnings breakdown
+ */
+router.post('/work', async (req, res) => {
+	try {
+		const userId = req.user.userId;  // From JWT token
+		
+		console.log(`[API] 💼 Work request from user: ${userId}`);
+		
+		// Process work shift (handles everything internally)
+		const result = await WorkService.processWorkShift(userId);
+		
+		res.json(result);
+		
+	} catch (error) {
+		console.error('[API] ❌ Work error:', error);
+		
+		// Determine error status code
+		let statusCode = 500;
+		
+		if (error.message.includes('energy')) {
+			statusCode = 400;  // Bad request (insufficient energy)
+		} else if (error.message.includes('cooldown')) {
+			statusCode = 429;  // Too many requests (cooldown active)
+		} else if (error.message.includes('insolvent') || error.message.includes('afford')) {
+			statusCode = 503;  // Service unavailable (company can't pay)
+		}
+		
+		res.status(statusCode).json({
+			success: false,
+			error: 'Work shift failed',
+			message: error.message,
+			code: 'WORK_ERROR'
+		});
+	}
+});
+
+/**
+ * GET /work/preview
+ * Preview salary for next work shift (without executing)
+ * 
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Read-only (no state changes)
+ * 
+ * PURPOSE:
+ * - Show player how much they would earn
+ * - Display penalties (exhaustion, depression)
+ * - Help player decide when to work
+ * 
+ * @returns {object} - Salary breakdown (preview only)
+ */
+router.get('/work/preview', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		
+		// Load user
+		const user = await User.findById(userId);
+		
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				error: 'User not found'
+			});
+		}
+		
+		// Load employer (or use government default)
+		let company;
+		
+		if (user.employer_id) {
+			company = await Company.findById(user.employer_id);
+		}
+		
+		if (!company) {
+			company = await Company.findGovernmentEmployer();
+		}
+		
+		if (!company) {
+			return res.status(500).json({
+				success: false,
+				error: 'No employer available',
+				message: 'Please contact administrator'
+			});
+		}
+		
+		// Calculate salary (preview)
+		const salaryCheck = WorkCalculator.calculateSalaryCheck(user);
+		
+		// Check eligibility
+		const eligibility = WorkCalculator.validateWorkEligibility(user);
+		
+		res.json({
+			success: true,
+			canWork: eligibility.canWork,
+			reason: eligibility.reason,
+			message: eligibility.message,
+			
+			company: {
+				name: company.name,
+				type: company.type,
+				wage_offer: company.wage_offer,
+				has_funds: company.canAffordSalary(company.wage_offer)
+			},
+			
+			preview: salaryCheck.canWork ? {
+				gross_estimated: salaryCheck.breakdown.grossSalary,
+				net_estimated: salaryCheck.breakdown.netSalary,
+				tax_estimated: salaryCheck.breakdown.taxAmount,
+				modifiers: salaryCheck.breakdown.modifiers,
+				efficiency: salaryCheck.breakdown.efficiency
+			} : null,
+			
+			current_stats: {
+				energy: user.energy,
+				happiness: user.happiness,
+				productivity: user.productivity_multiplier
+			},
+			
+			cooldown: eligibility.cooldown || null
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Work preview error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to preview work',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * GET /companies
+ * List available companies (hiring)
+ * 
+ * SECURITY:
+ * - Public endpoint (no auth required)
+ * - Read-only
+ * 
+ * PURPOSE:
+ * - Show player available jobs
+ * - Compare salaries
+ * - Choose employer
+ * 
+ * @param {string} type - Filter by company type (optional)
+ * @returns {array} - List of hiring companies
+ */
+router.get('/companies', async (req, res) => {
+	try {
+		const { type } = req.query;
+		
+		const filters = {};
+		if (type) {
+			filters.type = type.toUpperCase();
+		}
+		
+		// Find hiring companies
+		const companies = await Company.findHiringCompanies(filters);
+		
+		res.json({
+			success: true,
+			data: {
+				companies: companies.map(c => ({
+					id: c._id,
+					name: c.name,
+					type: c.type,
+					wage_offer: c.wage_offer,
+					min_skill_required: c.min_skill_required,
+					employees_count: c.employees.length,
+					max_employees: c.max_employees,
+					has_openings: c.employees.length < c.max_employees,
+					status: c.status,
+					is_government: c.is_government,
+					owner: c.owner_id ? {
+						id: c.owner_id._id,
+						username: c.owner_id.username
+					} : null
+				})),
+				count: companies.length,
+				timestamp: new Date().toISOString()
+			}
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ List companies error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to list companies',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * POST /companies/:id/join
+ * Join a company (change employer)
+ * 
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Validates company exists and is hiring
+ * - Validates user meets skill requirements
+ * 
+ * PURPOSE:
+ * - Allow player to switch jobs
+ * - Find better paying companies
+ * - Career progression
+ * 
+ * @param {string} id - Company ID
+ * @returns {object} - Success message
+ */
+router.post('/companies/:id/join', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const companyId = req.params.id;
+		
+		// Load user
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				error: 'User not found'
+			});
+		}
+		
+		// Load company
+		const company = await Company.findById(companyId);
+		if (!company) {
+			return res.status(404).json({
+				success: false,
+				error: 'Company not found'
+			});
+		}
+		
+		// Validate company
+		if (company.status !== 'ACTIVE') {
+			return res.status(400).json({
+				success: false,
+				error: 'Company is not active',
+				message: `Company status: ${company.status}`
+			});
+		}
+		
+		if (!company.is_hiring) {
+			return res.status(400).json({
+				success: false,
+				error: 'Company is not hiring'
+			});
+		}
+		
+		if (company.employees.length >= company.max_employees) {
+			return res.status(400).json({
+				success: false,
+				error: 'Company is full',
+				message: `Maximum ${company.max_employees} employees`
+			});
+		}
+		
+		// Check if already employed here
+		if (user.employer_id && user.employer_id.toString() === companyId) {
+			return res.status(400).json({
+				success: false,
+				error: 'Already employed here',
+				message: `You already work at ${company.name}`
+			});
+		}
+		
+		// Leave old company (if employed)
+		if (user.employer_id) {
+			const oldCompany = await Company.findById(user.employer_id);
+			if (oldCompany) {
+				oldCompany.removeEmployee(user._id);
+				await oldCompany.save();
+			}
+		}
+		
+		// Join new company
+		company.addEmployee(user._id);
+		await company.save();
+		
+		// Update user
+		user.employer_id = company._id;
+		await user.save();
+		
+		res.json({
+			success: true,
+			message: `You are now employed at ${company.name}!`,
+			data: {
+				company: {
+					id: company._id,
+					name: company.name,
+					type: company.type,
+					wage_offer: company.wage_offer
+				}
+			}
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Join company error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to join company',
+			message: error.message
+		});
+	}
+});
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 

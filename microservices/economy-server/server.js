@@ -149,6 +149,101 @@ const userSchema = new mongoose.Schema({
 		default: 0
 	},
 	
+	// =========================================================================
+	// WORK SYSTEM (Module 2.2.B - Corporate Infrastructure)
+	// =========================================================================
+	
+	/**
+	 * Current Employer (reference to Company)
+	 * null = Unemployed (will be auto-assigned to government company)
+	 */
+	employer_id: {
+		type: mongoose.Schema.Types.ObjectId,
+		ref: 'Company',
+		default: null,
+		index: true
+	},
+	
+	/**
+	 * Last Work Timestamp
+	 * When player last worked (for 24h cooldown)
+	 */
+	last_work_at: {
+		type: Date,
+		default: null
+	},
+	
+	/**
+	 * Productivity Multiplier (skills, training, experience)
+	 * Default: 1.0000 (100%)
+	 * Future: Can increase through education, practice
+	 * Max: 5.0000 (500% - highly skilled worker)
+	 */
+	productivity_multiplier: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('1.0000'),
+		get: (value) => value ? value.toString() : '1.0000'
+	},
+	
+	/**
+	 * Total Shifts Worked (lifetime)
+	 * For statistics and achievements
+	 */
+	total_shifts_worked: {
+		type: Number,
+		default: 0,
+		min: 0
+	},
+	
+	/**
+	 * Total Earnings from Work (lifetime, in EURO)
+	 */
+	total_work_earnings_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000'),
+		get: (value) => value ? value.toString() : '0.0000'
+	},
+	
+	// =========================================================================
+	// REFERRAL/MASTER SYSTEM (Module 2.2.B - Player-Owned Accounts)
+	// =========================================================================
+	
+	/**
+	 * Master/Owner (reference to User)
+	 * If set, this player is "owned" by another player
+	 * 
+	 * Purpose: Referral system / Slave system
+	 * - Master receives 10% of worker's taxes
+	 * - Creates economic hierarchies
+	 * - Encourages recruitment
+	 * 
+	 * null = Free player (no master)
+	 */
+	master_id: {
+		type: mongoose.Schema.Types.ObjectId,
+		ref: 'User',
+		default: null,
+		index: true
+	},
+	
+	/**
+	 * When player was assigned to master
+	 */
+	master_assigned_at: {
+		type: Date,
+		default: null
+	},
+	
+	/**
+	 * Total referral earnings (if this player is a master)
+	 * How much they've earned from their "slaves"
+	 */
+	total_referral_earnings_euro: {
+		type: mongoose.Schema.Types.Decimal128,
+		default: () => mongoose.Types.Decimal128.fromString('0.0000'),
+		get: (value) => value ? value.toString() : '0.0000'
+	},
+	
 	// Statistics
 	total_transactions: { type: Number, default: 0 },
 	total_volume_euro: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
@@ -168,6 +263,11 @@ userSchema.index({ username: 1 });
 userSchema.index({ is_frozen_for_fraud: 1, vacation_mode: 1, energy: 1, happiness: 1 }); // Compound index for entropy query
 userSchema.index({ last_decay_processed: 1 }); // For duplicate prevention
 userSchema.index({ 'status_effects.dead': 1, isActive: 1 }); // For death detection
+
+// Indexes for work system (Module 2.2.B)
+userSchema.index({ employer_id: 1 }); // Find employees of a company
+userSchema.index({ last_work_at: 1 }); // For cooldown checks
+userSchema.index({ master_id: 1 }); // Find slaves of a master
 
 const User = mongoose.model('User', userSchema);
 
@@ -535,18 +635,28 @@ systemLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 
 
 const SystemLog = mongoose.model('SystemLog', systemLogSchema);
 
+// ============================================================================
+// COMPANY MODEL (Module 2.2.B - Corporate Infrastructure)
+// ============================================================================
+
+const Company = require('./models/Company');
+
 // Export models to be used by services
 global.User = User;
 global.Treasury = Treasury;
 global.Ledger = Ledger;
 global.SystemState = SystemState;
 global.SystemLog = SystemLog;
+global.Company = Company; // Module 2.2.B - Corporate Infrastructure
 
 // Import routes
 const economyRoutes = require('./routes/economy');
 
 // Import GameClock (The Timekeeper)
 const GameClock = require('./services/GameClock');
+
+// Import Genesis (Founder Companies)
+const { initializeGenesis } = require('./init/createFounderCompanies');
 
 // Routes
 app.use('/', economyRoutes);
@@ -654,6 +764,15 @@ app.listen(PORT, '0.0.0.0', async () => {
 	await connectDB();
 	console.log(`Economy Server listening on 0.0.0.0:${PORT}`);
 	console.log('✅ Economy Microservice Ready!');
+	
+	// Initialize Genesis (Founder Companies - Module 2.2.B)
+	try {
+		await initializeGenesis();
+		console.log('[Server] 🏢 Genesis Protocol complete');
+	} catch (error) {
+		console.error('[Server] ⚠️  Genesis failed (non-fatal):', error);
+		// Don't exit - server can still run, admin can create companies manually
+	}
 	
 	// Initialize The Timekeeper (Module 2.1.A)
 	try {
