@@ -43,14 +43,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 //handle compressed files (middleware)
-app.get('*.js', (req, res, next) => {
+app.get(/.*\.js$/, (req, res, next) => {
 	req.url = req.url + '.gz';
 	res.set('Content-Encoding', 'gzip');
 	res.set('Content-Type', 'text/javascript');
 	next();
 });
 
-app.get('*.css', (req, res, next) => {
+app.get(/.*\.css$/, (req, res, next) => {
 	req.url = req.url + '.gz';
 	res.set('Content-Encoding', 'gzip');
 	res.set('Content-Type', 'text/css');
@@ -257,12 +257,18 @@ console.log('[Server] ✅ Economy API proxy registered at /api/economy/* → eco
 //send static files
 app.use('/', express.static(path.resolve(__dirname, '..', 'public')));
 
-//fallback to the index file (only for non-API routes)
-app.get('*', (req, res) => {
-	// Don't serve index.html for API routes
+//fallback to the index file (SPA routing - React Router)
+// This must be AFTER all API routes to avoid intercepting them
+app.use((req, res, next) => {
+	// If request is for an API endpoint that doesn't exist, return 404
 	if (req.url.startsWith('/api/')) {
-		return res.status(404).send('API endpoint not found');
+		return res.status(404).json({
+			success: false,
+			error: 'API endpoint not found',
+			path: req.url
+		});
 	}
+	// Otherwise, serve the React app (SPA)
 	res.sendFile(path.resolve(__dirname, '..', 'public' , 'index.html'));
 });
 
