@@ -322,6 +322,81 @@ app.get('/health', (req, res) => {
 	});
 });
 
+// ADMIN ENDPOINT: Manual tick trigger (for testing)
+// TODO: Add admin authentication before production use!
+app.post('/admin/trigger-tick', async (req, res) => {
+	try {
+		console.log('[ADMIN] 🔧 Manual tick trigger requested');
+		
+		// Trigger the tick manually
+		await GameClock.onCronTrigger();
+		
+		// Get updated SystemState
+		const state = await global.SystemState.findOne({ key: 'UNIVERSE_CLOCK' });
+		
+		res.json({
+			success: true,
+			message: 'Tick triggered manually',
+			systemState: {
+				last_tick: new Date(state.last_tick_epoch).toISOString(),
+				total_ticks: state.total_ticks_processed,
+				last_duration: state.last_tick_duration_ms,
+				global_stats: state.global_stats
+			}
+		});
+		
+	} catch (error) {
+		console.error('[ADMIN] ❌ Manual tick failed:', error);
+		res.status(500).json({
+			success: false,
+			error: 'Manual tick failed',
+			message: error.message
+		});
+	}
+});
+
+// ADMIN ENDPOINT: Get SystemState
+app.get('/admin/system-state', async (req, res) => {
+	try {
+		const state = await global.SystemState.findOne({ key: 'UNIVERSE_CLOCK' });
+		
+		if (!state) {
+			return res.status(404).json({
+				success: false,
+				error: 'SystemState not found'
+			});
+		}
+		
+		res.json({
+			success: true,
+			data: {
+				key: state.key,
+				last_tick: new Date(state.last_tick_epoch).toISOString(),
+				last_tick_epoch: state.last_tick_epoch,
+				is_processing: state.is_processing,
+				lock_timestamp: state.lock_timestamp,
+				lock_holder: state.lock_holder,
+				game_version: state.game_version,
+				total_ticks_processed: state.total_ticks_processed,
+				last_tick_duration_ms: state.last_tick_duration_ms,
+				global_stats: state.global_stats,
+				consecutive_failures: state.consecutive_failures,
+				last_error: state.last_error,
+				createdAt: state.createdAt,
+				updatedAt: state.updatedAt
+			}
+		});
+		
+	} catch (error) {
+		console.error('[ADMIN] ❌ Get SystemState failed:', error);
+		res.status(500).json({
+			success: false,
+			error: 'Failed to retrieve SystemState',
+			message: error.message
+		});
+	}
+});
+
 // Graceful shutdown handler
 process.on('SIGTERM', async () => {
 	console.log('[Server] 🛑 SIGTERM received, shutting down gracefully...');
