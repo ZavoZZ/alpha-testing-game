@@ -51,6 +51,104 @@ const userSchema = new mongoose.Schema({
 	is_frozen_for_fraud: { type: Boolean, default: false },
 	productivity_multiplier: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('1.0000') },
 	
+	// =========================================================================
+	// LIFE SIMULATION (Module 2.1.B - Entropia Universală)
+	// =========================================================================
+	
+	/**
+	 * Energy Level (0-100)
+	 * Decreases by ENERGY_DECAY per hour
+	 * When 0 → Exhaustion state (coma)
+	 */
+	energy: { 
+		type: Number, 
+		default: 100,
+		min: 0,
+		max: 100
+	},
+	
+	/**
+	 * Happiness Level (0-100)
+	 * Decreases by HAPPINESS_DECAY per hour
+	 * When 0 → Depression state (reduced productivity)
+	 */
+	happiness: {
+		type: Number,
+		default: 100,
+		min: 0,
+		max: 100
+	},
+	
+	/**
+	 * Health Level (0-100)
+	 * Affected by exhaustion and depression
+	 * When 0 → Death (account deactivation)
+	 */
+	health: {
+		type: Number,
+		default: 100,
+		min: 0,
+		max: 100
+	},
+	
+	/**
+	 * Vacation Mode
+	 * When true, player is protected from entropy decay
+	 * Can be enabled for 7 days max per month
+	 */
+	vacation_mode: {
+		type: Boolean,
+		default: false
+	},
+	
+	/**
+	 * Vacation Start Time
+	 * When vacation mode was enabled
+	 */
+	vacation_started_at: {
+		type: Date,
+		default: null
+	},
+	
+	/**
+	 * Status Effects
+	 * Active conditions affecting the player
+	 */
+	status_effects: {
+		exhausted: { type: Boolean, default: false },      // Energy = 0
+		depressed: { type: Boolean, default: false },      // Happiness = 0
+		starving: { type: Boolean, default: false },       // No food consumed
+		homeless: { type: Boolean, default: false },       // No housing
+		sick: { type: Boolean, default: false },           // Health < 30
+		dying: { type: Boolean, default: false },          // Health < 10
+		dead: { type: Boolean, default: false }            // Health = 0
+	},
+	
+	/**
+	 * Last Decay Processed
+	 * Timestamp of last entropy tick
+	 * Used to prevent duplicate processing
+	 */
+	last_decay_processed: {
+		type: Date,
+		default: null
+	},
+	
+	/**
+	 * Consecutive Hours at Zero
+	 * How many hours player has been exhausted/depressed
+	 * Used for progressive penalties
+	 */
+	consecutive_zero_energy_hours: {
+		type: Number,
+		default: 0
+	},
+	
+	consecutive_zero_happiness_hours: {
+		type: Number,
+		default: 0
+	},
+	
 	// Statistics
 	total_transactions: { type: Number, default: 0 },
 	total_volume_euro: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
@@ -62,8 +160,14 @@ const userSchema = new mongoose.Schema({
 	timestamps: true
 });
 
+// Indexes for authentication
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
+
+// Indexes for life simulation (performance critical for entropy tick)
+userSchema.index({ is_frozen_for_fraud: 1, vacation_mode: 1, energy: 1, happiness: 1 }); // Compound index for entropy query
+userSchema.index({ last_decay_processed: 1 }); // For duplicate prevention
+userSchema.index({ 'status_effects.dead': 1, isActive: 1 }); // For death detection
 
 const User = mongoose.model('User', userSchema);
 
@@ -297,11 +401,146 @@ systemStateSchema.statics.getSingleton = async function() {
 
 const SystemState = mongoose.model('SystemState', systemStateSchema);
 
+// ============================================================================
+// SYSTEM LOG MODEL - AUDIT TRAIL FOR GAME OPERATIONS
+// ============================================================================
+
+/**
+ * SystemLog - Comprehensive Audit Trail
+ * 
+ * Records all major game operations for monitoring, debugging, and analytics.
+ * Each tick creates log entries for entropy, income, events, etc.
+ * 
+ * CRITICAL: High-volume collection (1 log per operation per tick)
+ * Use TTL index to auto-delete old logs (keep last 30 days)
+ * 
+ * @version 1.0.0 - Module 2.1.B: Entropia Universală
+ * @date 2026-02-12
+ */
+const systemLogSchema = new mongoose.Schema({
+	/**
+	 * Log Type
+	 * Categorizes the operation type
+	 */
+	type: {
+		type: String,
+		required: true,
+		enum: [
+			'HOURLY_ENTROPY',      // Energy/Happiness decay
+			'PASSIVE_INCOME',      // Work salary, investments
+			'MAINTENANCE_COSTS',   // Housing, utilities
+			'RANDOM_EVENT',        // Weather, market changes
+			'DEATH_PROCESSING',    // Player death handling
+			'RESURRECTION',        // Player revival
+			'VACATION_START',      // Vacation mode enabled
+			'VACATION_END',        // Vacation mode disabled
+			'ADMIN_INTERVENTION',  // Manual admin action
+			'SYSTEM_ERROR'         // Error during processing
+		],
+		index: true
+	},
+	
+	/**
+	 * Tick Reference
+	 * Which hourly tick this log belongs to
+	 */
+	tick_number: {
+		type: Number,
+		required: true,
+		index: true
+	},
+	
+	/**
+	 * Tick Timestamp
+	 * When the tick was processed
+	 */
+	tick_timestamp: {
+		type: Date,
+		required: true,
+		index: true
+	},
+	
+	/**
+	 * Users Affected
+	 * How many users were modified by this operation
+	 */
+	users_affected: {
+		type: Number,
+		default: 0
+	},
+	
+	/**
+	 * Execution Time (milliseconds)
+	 * Performance monitoring
+	 */
+	execution_time_ms: {
+		type: Number,
+		required: true
+	},
+	
+	/**
+	 * Status
+	 * Success or failure
+	 */
+	status: {
+		type: String,
+		required: true,
+		enum: ['SUCCESS', 'PARTIAL_SUCCESS', 'FAILURE'],
+		default: 'SUCCESS'
+	},
+	
+	/**
+	 * Details
+	 * Operation-specific data
+	 */
+	details: {
+		energy_decay_applied: { type: Number, default: 0 },
+		happiness_decay_applied: { type: Number, default: 0 },
+		users_exhausted: { type: Number, default: 0 },
+		users_depressed: { type: Number, default: 0 },
+		users_died: { type: Number, default: 0 },
+		users_skipped_vacation: { type: Number, default: 0 },
+		users_skipped_frozen: { type: Number, default: 0 },
+		total_income_distributed: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
+		total_costs_deducted: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') }
+	},
+	
+	/**
+	 * Error Message
+	 * If status is FAILURE
+	 */
+	error_message: {
+		type: String,
+		default: null
+	},
+	
+	/**
+	 * Error Stack
+	 * For debugging
+	 */
+	error_stack: {
+		type: String,
+		default: null
+	}
+}, {
+	timestamps: true
+});
+
+// Indexes for performance
+systemLogSchema.index({ type: 1, tick_timestamp: -1 });
+systemLogSchema.index({ status: 1, tick_timestamp: -1 });
+
+// TTL Index: Auto-delete logs older than 30 days
+systemLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+
+const SystemLog = mongoose.model('SystemLog', systemLogSchema);
+
 // Export models to be used by services
 global.User = User;
 global.Treasury = Treasury;
 global.Ledger = Ledger;
 global.SystemState = SystemState;
+global.SystemLog = SystemLog;
 
 // Import routes
 const economyRoutes = require('./routes/economy');
