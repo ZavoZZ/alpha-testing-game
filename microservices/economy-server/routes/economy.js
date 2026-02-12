@@ -161,6 +161,78 @@ router.get('/system-status', async (req, res) => {
 // APPLY GLOBAL MIDDLEWARE TO ALL PROTECTED ECONOMY ROUTES
 // =============================================================================
 
+// =============================================================================
+// PUBLIC ROUTES (NO AUTH REQUIRED) - BEFORE JWT MIDDLEWARE
+// =============================================================================
+
+/**
+ * GET /companies
+ * List available companies (hiring)
+ * 
+ * SECURITY:
+ * - Public endpoint (no auth required)
+ * - Read-only
+ * 
+ * PURPOSE:
+ * - Show player available jobs
+ * - Compare salaries
+ * - Choose employer
+ * 
+ * @param {string} type - Filter by company type (optional)
+ * @returns {array} - List of hiring companies
+ */
+router.get('/companies', async (req, res) => {
+	try {
+		const Company = global.Company;
+		const { type } = req.query;
+		
+		const filters = {};
+		if (type) {
+			filters.type = type.toUpperCase();
+		}
+		
+		// Find hiring companies
+		const companies = await Company.findHiringCompanies(filters);
+		
+		res.json({
+			success: true,
+			data: {
+				companies: companies.map(c => ({
+					id: c._id,
+					name: c.name,
+					type: c.type,
+					wage_offer: c.wage_offer,
+					min_skill_required: c.min_skill_required,
+					employees_count: c.employees.length,
+					max_employees: c.max_employees,
+					has_openings: c.employees.length < c.max_employees,
+					status: c.status,
+					is_government: c.is_government,
+					owner: c.owner_id ? {
+						id: c.owner_id._id,
+						username: c.owner_id.username
+					} : null
+				})),
+				count: companies.length,
+				timestamp: new Date().toISOString()
+			}
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ List companies error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to list companies',
+			message: error.message
+		});
+	}
+});
+
+// =============================================================================
+// APPLY GLOBAL MIDDLEWARE TO ALL PROTECTED ECONOMY ROUTES
+// =============================================================================
+
 // Layer 1: Rate Limiting (10 req/5min per IP)
 router.use(economyRateLimiter);
 
@@ -169,6 +241,7 @@ router.use(verifyToken);
 
 console.log('[Economy Routes] 🛡️ Security layers active: Rate Limiting + JWT Auth');
 console.log('[Economy Routes] 📊 Macro-Economic Observer: /system-status endpoint active');
+console.log('[Economy Routes] 🏢 Public companies listing endpoint active');
 
 // =============================================================================
 // ROUTE: GET /api/economy/balance/:currency
@@ -1013,69 +1086,6 @@ router.get('/work/preview', async (req, res) => {
 		res.status(500).json({
 			success: false,
 			error: 'Failed to preview work',
-			message: error.message
-		});
-	}
-});
-
-/**
- * GET /companies
- * List available companies (hiring)
- * 
- * SECURITY:
- * - Public endpoint (no auth required)
- * - Read-only
- * 
- * PURPOSE:
- * - Show player available jobs
- * - Compare salaries
- * - Choose employer
- * 
- * @param {string} type - Filter by company type (optional)
- * @returns {array} - List of hiring companies
- */
-router.get('/companies', async (req, res) => {
-	try {
-		const { type } = req.query;
-		
-		const filters = {};
-		if (type) {
-			filters.type = type.toUpperCase();
-		}
-		
-		// Find hiring companies
-		const companies = await Company.findHiringCompanies(filters);
-		
-		res.json({
-			success: true,
-			data: {
-				companies: companies.map(c => ({
-					id: c._id,
-					name: c.name,
-					type: c.type,
-					wage_offer: c.wage_offer,
-					min_skill_required: c.min_skill_required,
-					employees_count: c.employees.length,
-					max_employees: c.max_employees,
-					has_openings: c.employees.length < c.max_employees,
-					status: c.status,
-					is_government: c.is_government,
-					owner: c.owner_id ? {
-						id: c.owner_id._id,
-						username: c.owner_id.username
-					} : null
-				})),
-				count: companies.length,
-				timestamp: new Date().toISOString()
-			}
-		});
-		
-	} catch (error) {
-		console.error('[API] ❌ List companies error:', error);
-		
-		res.status(500).json({
-			success: false,
-			error: 'Failed to list companies',
 			message: error.message
 		});
 	}
