@@ -125,13 +125,189 @@ ledgerSchema.statics.getUserHistory = async function(userId, limit = 50) {
 
 const Ledger = mongoose.model('Ledger', ledgerSchema);
 
+// ============================================================================
+// SYSTEM STATE MODEL - SINGLETON FOR GAME STATE
+// ============================================================================
+
+/**
+ * SystemState - The Global Memory of the Game
+ * 
+ * This is a SINGLETON collection with ONE document that stores critical
+ * game-wide state information. Used primarily for:
+ * 
+ * 1. Distributed Lock Mechanism (prevents duplicate hourly ticks)
+ * 2. Game Universe Clock (tracks last tick timestamp)
+ * 3. Global Statistics (active players, economy health)
+ * 4. Version Control (for graceful updates)
+ * 
+ * CRITICAL: Only ONE document should exist with key='UNIVERSE_CLOCK'
+ * 
+ * @version 1.0.0 - Module 2.1.A: The Timekeeper
+ * @date 2026-02-12
+ */
+const systemStateSchema = new mongoose.Schema({
+	// Primary Key (Unique, only one document with this key)
+	key: {
+		type: String,
+		required: true,
+		unique: true,
+		index: true,
+		default: 'UNIVERSE_CLOCK',
+		immutable: true  // Cannot be changed after creation
+	},
+	
+	// =========================================================================
+	// TEMPORAL STATE (The Timekeeper)
+	// =========================================================================
+	
+	/**
+	 * Timestamp (Unix Epoch) of the last SUCCESSFULLY completed hourly tick
+	 * Used to determine if a new tick should run
+	 */
+	last_tick_epoch: {
+		type: Number,
+		required: true,
+		default: () => Date.now()
+	},
+	
+	/**
+	 * Distributed Mutex Flag
+	 * When true, an hourly tick is currently processing
+	 * Prevents multiple server instances from running the same tick
+	 */
+	is_processing: {
+		type: Boolean,
+		default: false,
+		index: true  // Indexed for fast queries
+	},
+	
+	/**
+	 * Lock Timestamp
+	 * When the current processing started
+	 * Used for zombie process detection (if lock is held >5 min, assume crash)
+	 */
+	lock_timestamp: {
+		type: Date,
+		default: null
+	},
+	
+	/**
+	 * Lock Holder Identifier
+	 * Which server instance holds the lock (hostname + PID)
+	 * Useful for debugging and monitoring
+	 */
+	lock_holder: {
+		type: String,
+		default: null
+	},
+	
+	// =========================================================================
+	// GAME METADATA
+	// =========================================================================
+	
+	/**
+	 * Game Version
+	 * Semantic versioning for compatibility checks
+	 */
+	game_version: {
+		type: String,
+		default: 'Alpha 0.2.0'
+	},
+	
+	/**
+	 * Total Hourly Ticks Processed
+	 * Incremented after each successful tick
+	 */
+	total_ticks_processed: {
+		type: Number,
+		default: 0
+	},
+	
+	/**
+	 * Last Tick Duration (milliseconds)
+	 * Performance monitoring
+	 */
+	last_tick_duration_ms: {
+		type: Number,
+		default: 0
+	},
+	
+	// =========================================================================
+	// GLOBAL STATISTICS (Snapshot at Last Tick)
+	// =========================================================================
+	
+	/**
+	 * Global Stats Object
+	 * Stores quick-access statistics from the last tick
+	 */
+	global_stats: {
+		active_users_count: { type: Number, default: 0 },
+		total_economy_euro: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
+		total_economy_gold: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
+		total_economy_ron: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
+		transactions_last_hour: { type: Number, default: 0 },
+		average_balance_euro: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') }
+	},
+	
+	// =========================================================================
+	// HEALTH & MONITORING
+	// =========================================================================
+	
+	/**
+	 * Failed Tick Attempts
+	 * Counter for consecutive failures (for alerting)
+	 */
+	consecutive_failures: {
+		type: Number,
+		default: 0
+	},
+	
+	/**
+	 * Last Error Message
+	 * Stores the last error for debugging
+	 */
+	last_error: {
+		message: { type: String, default: null },
+		timestamp: { type: Date, default: null },
+		stack: { type: String, default: null }
+	}
+}, {
+	timestamps: true  // Adds createdAt and updatedAt
+});
+
+// Indexes for performance
+systemStateSchema.index({ key: 1, is_processing: 1 });
+
+// Static method: Get or create the singleton
+systemStateSchema.statics.getSingleton = async function() {
+	let state = await this.findOne({ key: 'UNIVERSE_CLOCK' });
+	
+	if (!state) {
+		console.log('[SystemState] Singleton not found, creating...');
+		state = await this.create({
+			key: 'UNIVERSE_CLOCK',
+			last_tick_epoch: Date.now(),
+			game_version: 'Alpha 0.2.0'
+		});
+		console.log('[SystemState] ✅ Singleton created');
+	}
+	
+	return state;
+};
+
+const SystemState = mongoose.model('SystemState', systemStateSchema);
+
 // Export models to be used by services
 global.User = User;
 global.Treasury = Treasury;
 global.Ledger = Ledger;
+global.SystemState = SystemState;
 
 // Import routes
 const economyRoutes = require('./routes/economy');
+
+// Import GameClock (The Timekeeper)
+const GameClock = require('./services/GameClock');
 
 // Routes
 app.use('/', economyRoutes);
@@ -146,9 +322,31 @@ app.get('/health', (req, res) => {
 	});
 });
 
+// Graceful shutdown handler
+process.on('SIGTERM', async () => {
+	console.log('[Server] 🛑 SIGTERM received, shutting down gracefully...');
+	await GameClock.shutdown();
+	process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+	console.log('[Server] 🛑 SIGINT received, shutting down gracefully...');
+	await GameClock.shutdown();
+	process.exit(0);
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
 	await connectDB();
 	console.log(`Economy Server listening on 0.0.0.0:${PORT}`);
 	console.log('✅ Economy Microservice Ready!');
+	
+	// Initialize The Timekeeper (Module 2.1.A)
+	try {
+		await GameClock.initialize();
+		console.log('[Server] 🕐 The Timekeeper is now active');
+	} catch (error) {
+		console.error('[Server] ❌ Failed to initialize GameClock:', error);
+		// Don't exit - server can still handle API requests
+	}
 });
