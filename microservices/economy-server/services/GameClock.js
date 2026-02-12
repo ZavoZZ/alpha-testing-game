@@ -420,27 +420,75 @@ class GameClock {
 			console.log(`[LIFE ENGINE] ✅ Cascading effects processed: ${cascadeResult.healthDamaged} players damaged`);
 			
 			// =========================================================================
-			// PHASE 3: UPDATE GLOBAL STATISTICS
+			// PHASE 3: THE CENSUS (Module 2.1.C - Recensământul Instantaneu)
 			// =========================================================================
 			
-			console.log('[LIFE ENGINE] 📊 Updating global statistics...');
+			console.log('[MACRO-OBSERVER] 📊 Running instantaneous census...');
 			
-			await this.updateGlobalStatistics();
+			const censusResult = await this.runInstantaneousCensus(tickTimestamp);
+			
+			console.log(`[MACRO-OBSERVER] ✅ Census complete: ${censusResult.total_active_users} active users, ${censusResult.new_users_last_hour} new this hour`);
 			
 			// =========================================================================
-			// PHASE 4: SUMMARY
+			// PHASE 4: CONSISTENCY CHECK (Module 2.1.C - Self-Healing Layer)
+			// =========================================================================
+			
+			console.log('[MACRO-OBSERVER] 🔍 Running consistency check...');
+			
+			const consistencyResult = await this.runConsistencyCheck();
+			
+			if (consistencyResult.orphansFound > 0) {
+				console.log(`[MACRO-OBSERVER] ⚠️  Found ${consistencyResult.orphansFound} orphan users, repairing...`);
+				await this.repairUserSchema(consistencyResult.orphansFound);
+				console.log(`[MACRO-OBSERVER] ✅ Repaired ${consistencyResult.orphansRepaired} users`);
+			} else {
+				console.log(`[MACRO-OBSERVER] ✅ No orphan users found - system consistent`);
+			}
+			
+			// =========================================================================
+			// PHASE 5: TELEMETRIE DINAMICĂ (Module 2.1.C - Deflație & Burn Rate)
+			// =========================================================================
+			
+			const telemetryResult = this.calculateTelemetry(entropyResult, censusResult);
+			
+			console.log('[MACRO-OBSERVER] 📈 Telemetry calculated:');
+			console.log(`   - Theoretical energy burned: ${telemetryResult.theoretical_energy_burned}`);
+			console.log(`   - Theoretical happiness lost: ${telemetryResult.theoretical_happiness_lost}`);
+			console.log(`   - Server burn rate: ${telemetryResult.burn_rate_per_second}/sec`);
+			
+			// =========================================================================
+			// PHASE 6: COMPREHENSIVE AUDIT LOG (Module 2.1.C)
 			// =========================================================================
 			
 			const tickEndTime = performance.now();
 			const totalDuration = Math.round(tickEndTime - tickStartTime);
 			
-			console.log('[LIFE ENGINE] 📋 Tick Summary:');
-			console.log(`   - Players affected by entropy: ${entropyResult.usersAffected}`);
-			console.log(`   - Players exhausted: ${entropyResult.usersExhausted}`);
-			console.log(`   - Players depressed: ${entropyResult.usersDepressed}`);
-			console.log(`   - Players damaged by cascade: ${cascadeResult.healthDamaged}`);
-			console.log(`   - Players died: ${cascadeResult.usersDied}`);
-			console.log(`   - Total execution time: ${totalDuration}ms`);
+			await this.createComprehensiveAuditLog({
+				tickNumber: currentTickNumber,
+				tickTimestamp: tickTimestamp,
+				entropy: entropyResult,
+				cascade: cascadeResult,
+				census: censusResult,
+				consistency: consistencyResult,
+				telemetry: telemetryResult,
+				totalDuration: totalDuration
+			});
+			
+			// =========================================================================
+			// PHASE 7: THE PULSE BROADCAST (Module 2.1.C)
+			// =========================================================================
+			
+			console.log('');
+			console.log('═'.repeat(80));
+			console.log('[PULSE] 💓 TICK COMPLETE'.padEnd(80, ' '));
+			console.log(`[PULSE] 👥 Population: ${censusResult.total_active_users}`.padEnd(80, ' '));
+			console.log(`[PULSE] 🆕 New Users: ${censusResult.new_users_last_hour}`.padEnd(80, ' '));
+			console.log(`[PULSE] 💀 Deaths: ${cascadeResult.usersDied}`.padEnd(80, ' '));
+			console.log(`[PULSE] ⚡ Energy Burned: ${telemetryResult.theoretical_energy_burned}`.padEnd(80, ' '));
+			console.log(`[PULSE] 😊 Happiness Lost: ${telemetryResult.theoretical_happiness_lost}`.padEnd(80, ' '));
+			console.log(`[PULSE] ⏱️  Duration: ${totalDuration}ms`.padEnd(80, ' '));
+			console.log('═'.repeat(80));
+			console.log('');
 			
 			console.log('[LIFE ENGINE] 🎮 Life Simulation Tick complete');
 			
@@ -915,6 +963,370 @@ class GameClock {
 			console.error('[TIMEKEEPER] ❌ Statistics update failed:', error);
 			// Don't throw - stats update failure shouldn't block the tick
 		}
+	}
+	
+	/**
+	 * =========================================================================
+	 * MODULE 2.1.C: MACRO-ECONOMIC OBSERVER
+	 * =========================================================================
+	 */
+	
+	/**
+	 * Run Instantaneous Census
+	 * 
+	 * The Census is a critical operation that guarantees ALL users
+	 * (old and new) are included in statistics, regardless of when
+	 * they signed up.
+	 * 
+	 * ZERO-TOUCH AUTOMATION:
+	 * - Detects new users automatically (createdAt within last hour)
+	 * - Calculates aggregate statistics in single query
+	 * - No manual intervention needed
+	 * 
+	 * @param {Date} tickTimestamp - Current tick timestamp
+	 * @returns {Promise<Object>} - Census results
+	 */
+	async runInstantaneousCensus(tickTimestamp) {
+		const startTime = performance.now();
+		const User = global.User;
+		
+		// One hour ago (for new user detection)
+		const oneHourAgo = new Date(tickTimestamp.getTime() - 3600000);
+		
+		// =====================================================================
+		// THE CENSUS AGGREGATION
+		// =====================================================================
+		
+		const censusResults = await User.aggregate([
+			{
+				// STAGE 1: Filter out banned/frozen accounts
+				$match: {
+					is_frozen_for_fraud: false,
+					isBanned: false
+				}
+			},
+			{
+				// STAGE 2: Group and calculate statistics
+				$group: {
+					_id: null,
+					
+					// Population metrics
+					total_active_users: { $sum: 1 },
+					
+					// New user detection (AUTOMATIC)
+					new_users_last_hour: {
+						$sum: {
+							$cond: [
+								{ $gte: ['$createdAt', oneHourAgo] },
+								1,
+								0
+							]
+						}
+					},
+					
+					// Life stats aggregates
+					total_server_energy: { $sum: '$energy' },
+					total_server_happiness: { $sum: '$happiness' },
+					total_server_health: { $sum: '$health' },
+					
+					average_energy: { $avg: '$energy' },
+					average_happiness: { $avg: '$happiness' },
+					average_health: { $avg: '$health' },
+					
+					// Status effects counts
+					users_exhausted: {
+						$sum: {
+							$cond: ['$status_effects.exhausted', 1, 0]
+						}
+					},
+					users_depressed: {
+						$sum: {
+							$cond: ['$status_effects.depressed', 1, 0]
+						}
+					},
+					users_sick: {
+						$sum: {
+							$cond: ['$status_effects.sick', 1, 0]
+						}
+					},
+					users_dying: {
+						$sum: {
+							$cond: ['$status_effects.dying', 1, 0]
+						}
+					},
+					users_dead: {
+						$sum: {
+							$cond: ['$status_effects.dead', 1, 0]
+						}
+					},
+					
+					// Vacation mode
+					users_on_vacation: {
+						$sum: {
+							$cond: ['$vacation_mode', 1, 0]
+						}
+					},
+					
+					// Economy aggregates (convert Decimal128 to number)
+					total_economy_euro: { $sum: { $toDouble: '$balance_euro' } },
+					total_economy_gold: { $sum: { $toDouble: '$balance_gold' } },
+					total_economy_ron: { $sum: { $toDouble: '$balance_ron' } },
+					
+					average_balance_euro: { $avg: { $toDouble: '$balance_euro' } }
+				}
+			}
+		]);
+		
+		const executionTime = Math.round(performance.now() - startTime);
+		
+		// Extract results (or return defaults if no users)
+		const census = censusResults[0] || {
+			total_active_users: 0,
+			new_users_last_hour: 0,
+			total_server_energy: 0,
+			total_server_happiness: 0,
+			total_server_health: 0,
+			average_energy: 0,
+			average_happiness: 0,
+			average_health: 0,
+			users_exhausted: 0,
+			users_depressed: 0,
+			users_sick: 0,
+			users_dying: 0,
+			users_dead: 0,
+			users_on_vacation: 0,
+			total_economy_euro: 0,
+			total_economy_gold: 0,
+			total_economy_ron: 0,
+			average_balance_euro: 0
+		};
+		
+		return {
+			...census,
+			execution_time_ms: executionTime
+		};
+	}
+	
+	/**
+	 * Run Consistency Check (Self-Healing Layer)
+	 * 
+	 * Detects "orphan users" - users who were created but somehow
+	 * lack the required life simulation fields.
+	 * 
+	 * This can happen if:
+	 * - Signup API had a bug
+	 * - Migration script didn't run
+	 * - Manual user creation in DB
+	 * 
+	 * ZERO-TOUCH AUTOMATION: Automatically detects and flags for repair.
+	 * 
+	 * @returns {Promise<Object>} - Consistency check results
+	 */
+	async runConsistencyCheck() {
+		const User = global.User;
+		
+		// Check for users missing critical fields
+		const orphansFound = await User.countDocuments({
+			$or: [
+				{ energy: { $exists: false } },
+				{ happiness: { $exists: false } },
+				{ health: { $exists: false } },
+				{ status_effects: { $exists: false } }
+			]
+		});
+		
+		return {
+			orphansFound: orphansFound,
+			orphansRepaired: 0  // Will be set by repairUserSchema()
+		};
+	}
+	
+	/**
+	 * Repair User Schema (Emergency Self-Healing)
+	 * 
+	 * Automatically fixes orphan users by setting default values.
+	 * 
+	 * DEFAULT VALUES:
+	 * - energy: 100
+	 * - happiness: 100
+	 * - health: 100
+	 * - status_effects: all false
+	 * - vacation_mode: false
+	 * - consecutive counters: 0
+	 * 
+	 * @param {number} orphanCount - Number of orphans to repair
+	 * @returns {Promise<number>} - Number of users repaired
+	 */
+	async repairUserSchema(orphanCount) {
+		const User = global.User;
+		
+		console.log(`[SELF-HEALING] 🔧 Repairing ${orphanCount} orphan users...`);
+		
+		const result = await User.updateMany(
+			{
+				$or: [
+					{ energy: { $exists: false } },
+					{ happiness: { $exists: false } },
+					{ health: { $exists: false } },
+					{ status_effects: { $exists: false } }
+				]
+			},
+			{
+				$set: {
+					energy: 100,
+					happiness: 100,
+					health: 100,
+					vacation_mode: false,
+					vacation_started_at: null,
+					status_effects: {
+						exhausted: false,
+						depressed: false,
+						starving: false,
+						homeless: false,
+						sick: false,
+						dying: false,
+						dead: false
+					},
+					last_decay_processed: null,
+					consecutive_zero_energy_hours: 0,
+					consecutive_zero_happiness_hours: 0
+				}
+			}
+		);
+		
+		console.log(`[SELF-HEALING] ✅ Repaired ${result.modifiedCount} users`);
+		
+		// Log the repair operation
+		const SystemLog = global.SystemLog;
+		await SystemLog.create({
+			type: 'ADMIN_INTERVENTION',
+			tick_number: 0,  // Emergency repair, not tied to specific tick
+			tick_timestamp: new Date(),
+			users_affected: result.modifiedCount,
+			execution_time_ms: 0,
+			status: 'SUCCESS',
+			details: {
+				repair_type: 'ORPHAN_USER_SCHEMA',
+				orphans_found: orphanCount,
+				orphans_repaired: result.modifiedCount
+			}
+		});
+		
+		return result.modifiedCount;
+	}
+	
+	/**
+	 * Calculate Telemetry (Deflație & Burn Rate)
+	 * 
+	 * Calculates theoretical resource consumption based on entropy.
+	 * 
+	 * BURN RATE: Resources consumed per second across entire server.
+	 * 
+	 * @param {Object} entropyResult - Results from entropy decay
+	 * @param {Object} censusResult - Results from census
+	 * @returns {Object} - Telemetry data
+	 */
+	calculateTelemetry(entropyResult, censusResult) {
+		const ENERGY_DECAY = 5;
+		const HAPPINESS_DECAY = 2;
+		
+		// Theoretical consumption (if all users were affected)
+		const theoretical_energy_burned = censusResult.total_active_users * ENERGY_DECAY;
+		const theoretical_happiness_lost = censusResult.total_active_users * HAPPINESS_DECAY;
+		
+		// Actual consumption (users affected by entropy)
+		const actual_energy_burned = entropyResult.usersAffected * ENERGY_DECAY;
+		const actual_happiness_lost = entropyResult.usersAffected * HAPPINESS_DECAY;
+		
+		// Burn rate (per second)
+		// 1 hour = 3600 seconds, so divide hourly burn by 3600
+		const energy_burn_rate_per_second = (actual_energy_burned / 3600).toFixed(4);
+		const happiness_burn_rate_per_second = (actual_happiness_lost / 3600).toFixed(4);
+		
+		// Efficiency (% of users actually affected vs theoretical)
+		const efficiency_percentage = censusResult.total_active_users > 0
+			? ((entropyResult.usersAffected / censusResult.total_active_users) * 100).toFixed(2)
+			: 0;
+		
+		return {
+			theoretical_energy_burned: theoretical_energy_burned,
+			theoretical_happiness_lost: theoretical_happiness_lost,
+			actual_energy_burned: actual_energy_burned,
+			actual_happiness_lost: actual_happiness_lost,
+			energy_burn_rate_per_second: parseFloat(energy_burn_rate_per_second),
+			happiness_burn_rate_per_second: parseFloat(happiness_burn_rate_per_second),
+			burn_rate_per_second: parseFloat(energy_burn_rate_per_second) + parseFloat(happiness_burn_rate_per_second),
+			efficiency_percentage: parseFloat(efficiency_percentage)
+		};
+	}
+	
+	/**
+	 * Create Comprehensive Audit Log
+	 * 
+	 * Creates a detailed SystemLog entry with ALL metrics from the tick.
+	 * 
+	 * This is the "source of truth" for system-status API and analytics.
+	 * 
+	 * @param {Object} data - All tick data
+	 * @returns {Promise<void>}
+	 */
+	async createComprehensiveAuditLog(data) {
+		const SystemLog = global.SystemLog;
+		
+		await SystemLog.create({
+			type: 'HOURLY_ENTROPY',
+			tick_number: data.tickNumber,
+			tick_timestamp: data.tickTimestamp,
+			users_affected: data.entropy.usersAffected,
+			execution_time_ms: data.totalDuration,
+			status: 'SUCCESS',
+			details: {
+				// Entropy results
+				energy_decay_applied: 5,
+				happiness_decay_applied: 2,
+				users_exhausted: data.entropy.usersExhausted,
+				users_depressed: data.entropy.usersDepressed,
+				
+				// Cascade results
+				users_health_damaged: data.cascade.healthDamaged,
+				users_died: data.cascade.usersDied,
+				
+				// Census results (NEW - Module 2.1.C)
+				total_active_users: data.census.total_active_users,
+				new_users_joined: data.census.new_users_last_hour,
+				users_on_vacation: data.census.users_on_vacation,
+				
+				// Life stats averages
+				average_energy: Math.round(data.census.average_energy),
+				average_happiness: Math.round(data.census.average_happiness),
+				average_health: Math.round(data.census.average_health),
+				
+				// Status effects
+				users_sick: data.census.users_sick,
+				users_dying: data.census.users_dying,
+				users_dead_total: data.census.users_dead,
+				
+				// Economy snapshot
+				total_economy_euro: data.census.total_economy_euro.toFixed(4),
+				total_economy_gold: data.census.total_economy_gold.toFixed(4),
+				total_economy_ron: data.census.total_economy_ron.toFixed(4),
+				average_balance_euro: data.census.average_balance_euro.toFixed(4),
+				
+				// Telemetry (NEW - Module 2.1.C)
+				theoretical_energy_burned: data.telemetry.theoretical_energy_burned,
+				theoretical_happiness_lost: data.telemetry.theoretical_happiness_lost,
+				actual_energy_burned: data.telemetry.actual_energy_burned,
+				actual_happiness_lost: data.telemetry.actual_happiness_lost,
+				burn_rate_per_second: data.telemetry.burn_rate_per_second,
+				efficiency_percentage: data.telemetry.efficiency_percentage,
+				
+				// Consistency check (NEW - Module 2.1.C)
+				orphans_found: data.consistency.orphansFound,
+				orphans_repaired: data.consistency.orphansRepaired
+			}
+		});
+		
+		console.log('[MACRO-OBSERVER] ✅ Comprehensive audit log created');
 	}
 	
 	/**

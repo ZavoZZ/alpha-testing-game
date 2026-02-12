@@ -67,6 +67,96 @@ router.get('/health', (req, res) => {
 	});
 });
 
+/**
+ * GET /system-status (PUBLIC - NO AUTH REQUIRED)
+ * 
+ * Module 2.1.C: Macro-Economic Observer
+ * 
+ * Returns comprehensive system state including:
+ * - Server time (for client sync)
+ * - Next tick info (countdown)
+ * - Latest tick data (population, stats, telemetry)
+ * - System health (performance, failures)
+ */
+router.get('/system-status', async (req, res) => {
+	try {
+		const SystemState = global.SystemState;
+		const SystemLog = global.SystemLog;
+		
+		const systemState = await SystemState.findOne({ key: 'UNIVERSE_CLOCK' });
+		
+		if (!systemState) {
+			return res.status(500).json({
+				success: false,
+				error: 'System state not initialized'
+			});
+		}
+		
+		const latestTickLog = await SystemLog.findOne({ type: 'HOURLY_ENTROPY' })
+			.sort({ tick_timestamp: -1 })
+			.limit(1);
+		
+		const now = new Date();
+		const nextTick = new Date(now);
+		nextTick.setUTCHours(nextTick.getUTCHours() + 1, 0, 0, 0);
+		
+		const timeUntilNextTick = nextTick.getTime() - now.getTime();
+		
+		res.json({
+			success: true,
+			server_time: {
+				timestamp: now.toISOString(),
+				unix_epoch: now.getTime(),
+				utc_hour: now.getUTCHours(),
+				utc_minute: now.getUTCMinutes()
+			},
+			next_tick: {
+				timestamp: nextTick.toISOString(),
+				unix_epoch: nextTick.getTime(),
+				time_until: {
+					milliseconds: timeUntilNextTick,
+					seconds: Math.floor(timeUntilNextTick / 1000),
+					minutes: Math.floor(timeUntilNextTick / 60000),
+					formatted: `${Math.floor(timeUntilNextTick / 60000)}m ${Math.floor((timeUntilNextTick % 60000) / 1000)}s`
+				}
+			},
+			system: {
+				game_version: systemState.game_version,
+				total_ticks_processed: systemState.total_ticks_processed,
+				last_tick_timestamp: new Date(systemState.last_tick_epoch).toISOString(),
+				last_tick_duration_ms: systemState.last_tick_duration_ms,
+				is_processing: systemState.is_processing
+			},
+			latest_tick: latestTickLog ? {
+				tick_number: latestTickLog.tick_number,
+				timestamp: latestTickLog.tick_timestamp,
+				execution_time_ms: latestTickLog.execution_time_ms,
+				population: {
+					total_active: latestTickLog.details.total_active_users || 0,
+					new_users_joined: latestTickLog.details.new_users_joined || 0
+				},
+				life_stats: {
+					average_energy: latestTickLog.details.average_energy || 0,
+					average_happiness: latestTickLog.details.average_happiness || 0,
+					average_health: latestTickLog.details.average_health || 0
+				},
+				telemetry: {
+					burn_rate_per_second: latestTickLog.details.burn_rate_per_second || 0,
+					efficiency_percentage: latestTickLog.details.efficiency_percentage || 0
+				}
+			} : null
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ System status error:', error);
+		res.status(500).json({
+			success: false,
+			error: 'Failed to retrieve system status',
+			message: error.message
+		});
+	}
+});
+
 // =============================================================================
 // APPLY GLOBAL MIDDLEWARE TO ALL PROTECTED ECONOMY ROUTES
 // =============================================================================
@@ -78,6 +168,7 @@ router.use(economyRateLimiter);
 router.use(verifyToken);
 
 console.log('[Economy Routes] 🛡️ Security layers active: Rate Limiting + JWT Auth');
+console.log('[Economy Routes] 📊 Macro-Economic Observer: /system-status endpoint active');
 
 // =============================================================================
 // ROUTE: GET /api/economy/balance/:currency
