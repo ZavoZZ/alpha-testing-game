@@ -1,0 +1,48 @@
+name: Health Check
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check main application
+        run: |
+          echo "🏥 Checking main application..."
+          curl -f https://ovidiuguru.online/health || exit 1
+          echo "✅ Main application is healthy"
+      
+      - name: Check API endpoints
+        run: |
+          echo "🏥 Checking API endpoints..."
+          
+          # Check economy API
+          curl -f https://ovidiuguru.online/api/economy/health || echo "⚠️ Economy API unhealthy"
+          
+          # Check auth API
+          curl -f https://ovidiuguru.online/api/auth/health || echo "⚠️ Auth API unhealthy"
+          
+          # Check news API
+          curl -f https://ovidiuguru.online/api/news/health || echo "⚠️ News API unhealthy"
+          
+          # Check chat API
+          curl -f https://ovidiuguru.online/api/chat/health || echo "⚠️ Chat API unhealthy"
+          
+          echo "✅ Health checks complete"
+      
+      - name: Check response time
+        run: |
+          echo "⏱️ Checking response time..."
+          time curl -s https://ovidiuguru.online > /dev/null
+          echo "✅ Response time check complete"
+      
+      - name: Notify if unhealthy
+        if: failure()
+        run: |
+          echo "❌ Health check failed! Server may be down."
+          # Add notification logic here (email, Slack, etc.)
