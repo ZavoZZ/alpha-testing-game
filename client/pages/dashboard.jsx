@@ -111,7 +111,7 @@ const Dashboard = props => {
 					</div>
 
 					{/* Features Coming Soon */}
-					<div style={styles.featuresGrid} className="animate-slide-up" style={{animationDelay: '0.4s'}}>
+					<div className="animate-slide-up" style={{...styles.featuresGrid, animationDelay: '0.4s'}}>
 						<div className="glass-container" style={styles.featureCard}>
 							<div style={styles.featureIcon}>🎯</div>
 							<div style={styles.featureTitle}>Missions</div>
@@ -138,7 +138,7 @@ const Dashboard = props => {
 					</div>
 
 					{/* Quick Links */}
-					<div style={styles.quickLinks} className="animate-slide-up" style={{animationDelay: '0.5s'}}>
+					<div className="animate-slide-up" style={{...styles.quickLinks, animationDelay: '0.5s'}}>
 						<Link to='/account' style={styles.link}>
 							<button className="modern-button secondary" style={styles.quickButton}>
 								<span style={styles.buttonIcon}>👤</span>
@@ -166,13 +166,13 @@ const Dashboard = props => {
 					</div>
 
 					{/* Logout */}
-					<div style={styles.logoutContainer} className="animate-slide-up" style={{animationDelay: '0.6s'}}>
+					<div className="animate-slide-up" style={{...styles.logoutContainer, animationDelay: '0.6s'}}>
 						<Logout />
 					</div>
 				</div>
 
 				{/* Status Bar */}
-				<div style={styles.statusBar} className="animate-slide-up" style={{animationDelay: '0.7s'}}>
+				<div className="animate-slide-up" style={{...styles.statusBar, animationDelay: '0.7s'}}>
 					<div style={styles.statusItem}>
 						<span style={styles.statusIcon}>✅</span>
 						<span style={styles.statusText}>Logged in as {payload.username}</span>
