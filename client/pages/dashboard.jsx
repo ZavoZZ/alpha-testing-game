@@ -1,15 +1,19 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 
 import ApplyToBody from './utilities/apply-to-body';
 import { TokenContext } from './utilities/token-provider';
 import Logout from './accounts/panels/logout';
 import WorkStation from './panels/WorkStation';  // Module 2.2.C
+import InventoryPanel from './panels/InventoryPanel';  // Module 2.3
+import MarketplacePanel from './panels/MarketplacePanel';  // Module 2.3
+import NewsFeed from './panels/news-feed';
 
 import '../styles/modern-game.css';
 
 const Dashboard = props => {
 	const authTokens = useContext(TokenContext);
+	const [activeTab, setActiveTab] = useState('work');
 
 	console.log('Dashboard - accessToken:', authTokens.accessToken ? 'EXISTS' : 'MISSING');
 
@@ -52,13 +56,44 @@ const Dashboard = props => {
 						Welcome, <span style={styles.username}>{payload.username || 'Player'}</span>!
 					</h1>
 					<p style={{fontSize: '16px', color: '#aaa', textAlign: 'center', marginBottom: '32px'}}>
-						🎮 Alpha Testing Game - Module 2.2 Active
+						🎮 Alpha Testing Game - Module 2.3 Active
 					</p>
 				</div>
 				
-				{/* WorkStation Panel (Module 2.2.C) */}
-				<div style={{marginTop: '32px'}}>
-					<WorkStation />
+				{/* Tab Navigation */}
+				<div className="tab-navigation glass-container" style={styles.tabNav}>
+					<button 
+						className={activeTab === 'work' ? 'tab-button active' : 'tab-button'}
+						onClick={() => setActiveTab('work')}
+					>
+						💼 Muncă
+					</button>
+					<button 
+						className={activeTab === 'inventory' ? 'tab-button active' : 'tab-button'}
+						onClick={() => setActiveTab('inventory')}
+					>
+						📦 Inventar
+					</button>
+					<button 
+						className={activeTab === 'marketplace' ? 'tab-button active' : 'tab-button'}
+						onClick={() => setActiveTab('marketplace')}
+					>
+						🏪 Piață
+					</button>
+					<button 
+						className={activeTab === 'news' ? 'tab-button active' : 'tab-button'}
+						onClick={() => setActiveTab('news')}
+					>
+						📰 Știri
+					</button>
+				</div>
+				
+				{/* Tab Content */}
+				<div className="tab-content" style={styles.tabContent}>
+					{activeTab === 'work' && <WorkStation />}
+					{activeTab === 'inventory' && <InventoryPanel />}
+					{activeTab === 'marketplace' && <MarketplacePanel />}
+					{activeTab === 'news' && <NewsFeed />}
 				</div>
 				
 				{/* Work in Progress Section */}
@@ -282,6 +317,20 @@ const styles = {
 	statusText: {
 		fontSize: '14px',
 		color: 'rgba(255, 255, 255, 0.8)',
+	},
+	tabNav: {
+		maxWidth: '900px',
+		width: '100%',
+		padding: '12px',
+		display: 'flex',
+		gap: '8px',
+		justifyContent: 'center',
+		flexWrap: 'wrap',
+	},
+	tabContent: {
+		maxWidth: '900px',
+		width: '100%',
+		marginTop: '16px',
 	},
 };
 

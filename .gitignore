@@ -117,3 +117,12 @@ Dockerfile
 docker-compose.yml
 startup.sql
 
+# VS Code settings with sensitive data
+.vscode/settings.json
+
+# Qdrant vector storage
+qdrant_storage/
+
+# Kilo AI cache
+.kilo/
+

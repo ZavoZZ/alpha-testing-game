@@ -164,6 +164,27 @@ const companySchema = new Schema({
 	},
 	
 	/**
+	 * Items given to workers as bonus (Module 2.3 integration)
+	 * Example: [{ item_code: 'BREAD_Q1', quantity: '1.0000' }]
+	 */
+	work_rewards: {
+		type: [{
+			item_code: {
+				type: String,
+				required: true,
+				uppercase: true
+			},
+			quantity: {
+				type: Schema.Types.Decimal128,
+				required: true,
+				default: '1.0000',
+				get: (v) => v ? v.toString() : '1.0000'
+			}
+		}],
+		default: []
+	},
+	
+	/**
 	 * Minimum skill/productivity required to work here
 	 * Future: Players must train to work at advanced companies
 	 * 

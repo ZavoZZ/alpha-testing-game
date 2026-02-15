@@ -98,6 +98,34 @@ For detailed setup instructions, see [`/docs/setup/QUICK_START.md`](/docs/setup/
 - User reporting for offensive content
 - Comprehensive moderation dashboard
 
+## 🎮 Game Economy System
+### 1. 💰 Financial System (Module 2.0)
+- Decimal128 precision for all financial calculations
+- ACID transactions with MongoDB sessions
+- Anti-fraud shield with rate limiting
+- Treasury system with automatic VAT collection
+- Comprehensive audit trails
+
+### 2. ⏰ Time & Life Engine (Module 2.1)
+- GameClock with configurable tick rates
+- Energy/Happiness decay system
+- Macro-economic observer with statistics
+- Real-time status updates
+
+### 3. 💼 Work System (Module 2.2)
+- Dynamic salary calculation based on energy/happiness
+- Company-based employment system
+- Work cooldown and rate limiting
+- Automatic salary payments with treasury integration
+
+### 4. 🏪 Marketplace & Metabolism (Module 2.3)
+- Item system with quality tiers (Q1-Q5)
+- Polymorphic inventory (Users + Companies)
+- Global marketplace with VAT collection
+- Item consumption with energy/happiness restoration
+- Work rewards (receive items when working)
+- Strategic resource management
+
 ## Configuration
 - Easy-to-use configuration script
 - Environment-based settings

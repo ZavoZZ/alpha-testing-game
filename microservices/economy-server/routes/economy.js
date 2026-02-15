@@ -1127,6 +1127,506 @@ router.post('/companies/:id/join', async (req, res) => {
 });
 
 // =============================================================================
+// MODULE 2.3.C - MARKETPLACE & METABOLISM ENDPOINTS
+// =============================================================================
+
+const MarketplaceService = require('../services/MarketplaceService');
+const ConsumptionService = require('../services/ConsumptionService');
+
+// ====================================================================
+// INVENTORY ENDPOINTS
+// ====================================================================
+
+/**
+ * GET /inventory
+ * Get user's inventory
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - User can only view their own inventory
+ *
+ * @returns {array} - User's inventory items
+ */
+router.get('/inventory', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const Inventory = global.Inventory;
+		const ItemPrototype = global.ItemPrototype;
+		
+		// Get user inventory
+		const inventory = await Inventory.find({
+			owner_id: userId,
+			owner_type: 'User'
+		}).sort({ acquired_at: -1 });
+		
+		// Enrich with item details
+		const enrichedInventory = await Promise.all(
+			inventory.map(async (item) => {
+				const prototype = await ItemPrototype.findOne({
+					item_code: item.item_code
+				});
+				
+				const effects = await item.getEffects();
+				const marketPrice = await item.getMarketPrice();
+				
+				return {
+					id: item._id,
+					item_code: item.item_code,
+					item_name: prototype ? prototype.name : item.item_code,
+					category: prototype ? prototype.category : 'UNKNOWN',
+					quality: item.quality,
+					quantity: item.quantity.toString(),
+					is_consumable: prototype ? prototype.is_consumable : false,
+					is_tradeable: prototype ? prototype.is_tradeable : false,
+					effects: effects,
+					market_price: marketPrice,
+					is_listed: item.is_listed,
+					listing_price: item.listing_price_euro ? item.listing_price_euro.toString() : null,
+					acquired_at: item.acquired_at,
+					expires_at: item.expires_at
+				};
+			})
+		);
+		
+		res.json({
+			success: true,
+			data: {
+				inventory: enrichedInventory,
+				count: enrichedInventory.length
+			}
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Get inventory error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to retrieve inventory',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * GET /inventory/:itemCode/:quality
+ * Get specific item from inventory
+ *
+ * @param {string} itemCode - Item code
+ * @param {number} quality - Item quality (1-5)
+ * @returns {object} - Item details
+ */
+router.get('/inventory/:itemCode/:quality', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const { itemCode, quality } = req.params;
+		const Inventory = global.Inventory;
+		const ItemPrototype = global.ItemPrototype;
+		
+		const item = await Inventory.findOne({
+			owner_id: userId,
+			owner_type: 'User',
+			item_code: itemCode.toUpperCase(),
+			quality: parseInt(quality)
+		});
+		
+		if (!item) {
+			return res.status(404).json({
+				success: false,
+				error: 'Item not found in inventory'
+			});
+		}
+		
+		const prototype = await ItemPrototype.findOne({
+			item_code: item.item_code
+		});
+		
+		const effects = await item.getEffects();
+		const marketPrice = await item.getMarketPrice();
+		
+		res.json({
+			success: true,
+			data: {
+				id: item._id,
+				item_code: item.item_code,
+				item_name: prototype ? prototype.name : item.item_code,
+				category: prototype ? prototype.category : 'UNKNOWN',
+				quality: item.quality,
+				quantity: item.quantity.toString(),
+				is_consumable: prototype ? prototype.is_consumable : false,
+				is_tradeable: prototype ? prototype.is_tradeable : false,
+				effects: effects,
+				market_price: marketPrice,
+				is_listed: item.is_listed,
+				listing_price: item.listing_price_euro ? item.listing_price_euro.toString() : null,
+				acquired_at: item.acquired_at,
+				expires_at: item.expires_at
+			}
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Get item error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to retrieve item',
+			message: error.message
+		});
+	}
+});
+
+// ====================================================================
+// MARKETPLACE ENDPOINTS
+// ====================================================================
+
+/**
+ * GET /marketplace
+ * Browse marketplace listings (PUBLIC - NO AUTH)
+ *
+ * @query {string} category - Filter by category
+ * @query {number} quality - Filter by quality
+ * @query {string} minPrice - Minimum price
+ * @query {string} maxPrice - Maximum price
+ * @query {string} sortBy - Sort order
+ * @query {number} page - Page number
+ * @query {number} limit - Items per page
+ * @returns {array} - Marketplace listings
+ */
+router.get('/marketplace', async (req, res) => {
+	try {
+		const { category, quality, minPrice, maxPrice, sortBy, page, limit } = req.query;
+		
+		const result = await MarketplaceService.browseListings({
+			category,
+			quality,
+			minPrice,
+			maxPrice,
+			sortBy,
+			page: page ? parseInt(page) : 1,
+			limit: limit ? parseInt(limit) : 20
+		});
+		
+		res.json({
+			success: true,
+			data: result
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Browse marketplace error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to browse marketplace',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * POST /marketplace/purchase
+ * Purchase item from marketplace
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Rate limited
+ * - ACID transaction
+ *
+ * @body {string} listingId - Listing ID
+ * @body {string} quantity - Quantity to purchase
+ * @returns {object} - Purchase result
+ */
+router.post('/marketplace/purchase', economyRateLimiter, async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const { listingId, quantity } = req.body;
+		
+		if (!listingId) {
+			return res.status(400).json({
+				success: false,
+				error: 'Listing ID is required'
+			});
+		}
+		
+		if (!quantity) {
+			return res.status(400).json({
+				success: false,
+				error: 'Quantity is required'
+			});
+		}
+		
+		const result = await MarketplaceService.purchaseItem(
+			userId,
+			listingId,
+			quantity
+		);
+		
+		res.json({
+			success: true,
+			data: result,
+			message: 'Purchase completed successfully'
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Purchase error:', error);
+		
+		res.status(400).json({
+			success: false,
+			error: 'Purchase failed',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * POST /marketplace/list
+ * List item on marketplace (ADMIN ONLY)
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Admin only
+ *
+ * @body {string} sellerId - Seller ID
+ * @body {string} sellerType - 'User' or 'Company'
+ * @body {string} itemCode - Item code
+ * @body {number} quality - Item quality
+ * @body {string} quantity - Quantity to list
+ * @body {string} pricePerUnit - Price per unit
+ * @returns {object} - Listing result
+ */
+router.post('/marketplace/list', async (req, res) => {
+	try {
+		// Admin only
+		if (req.user.role !== 'admin') {
+			return res.status(403).json({
+				success: false,
+				error: 'Unauthorized',
+				message: 'Admin access required'
+			});
+		}
+		
+		const { sellerId, sellerType, itemCode, quality, quantity, pricePerUnit } = req.body;
+		
+		if (!sellerId || !sellerType || !itemCode || !quality || !quantity || !pricePerUnit) {
+			return res.status(400).json({
+				success: false,
+				error: 'Missing required fields',
+				message: 'sellerId, sellerType, itemCode, quality, quantity, and pricePerUnit are required'
+			});
+		}
+		
+		const result = await MarketplaceService.listItem(
+			sellerId,
+			sellerType,
+			itemCode,
+			quality,
+			quantity,
+			pricePerUnit
+		);
+		
+		res.json({
+			success: true,
+			data: result,
+			message: 'Item listed successfully'
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ List item error:', error);
+		
+		res.status(400).json({
+			success: false,
+			error: 'Failed to list item',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * DELETE /marketplace/delist/:listingId
+ * Delist item from marketplace (ADMIN ONLY)
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Admin only
+ *
+ * @param {string} listingId - Listing ID
+ * @returns {object} - Success message
+ */
+router.delete('/marketplace/delist/:listingId', async (req, res) => {
+	try {
+		// Admin only
+		if (req.user.role !== 'admin') {
+			return res.status(403).json({
+				success: false,
+				error: 'Unauthorized',
+				message: 'Admin access required'
+			});
+		}
+		
+		const { listingId } = req.params;
+		
+		const result = await MarketplaceService.delistItem(
+			listingId,
+			req.user.userId
+		);
+		
+		res.json({
+			success: true,
+			data: result,
+			message: 'Item delisted successfully'
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Delist item error:', error);
+		
+		res.status(400).json({
+			success: false,
+			error: 'Failed to delist item',
+			message: error.message
+		});
+	}
+});
+
+// ====================================================================
+// CONSUMPTION ENDPOINTS
+// ====================================================================
+
+/**
+ * POST /consume
+ * Consume item from inventory
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - Rate limited
+ * - ACID transaction
+ *
+ * @body {string} itemCode - Item code
+ * @body {number} quality - Item quality
+ * @body {string} quantity - Quantity to consume
+ * @returns {object} - Consumption result
+ */
+router.post('/consume', economyRateLimiter, async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const { itemCode, quality, quantity } = req.body;
+		
+		if (!itemCode) {
+			return res.status(400).json({
+				success: false,
+				error: 'Item code is required'
+			});
+		}
+		
+		if (!quality) {
+			return res.status(400).json({
+				success: false,
+				error: 'Quality is required'
+			});
+		}
+		
+		if (!quantity) {
+			return res.status(400).json({
+				success: false,
+				error: 'Quantity is required'
+			});
+		}
+		
+		const result = await ConsumptionService.consumeItem(
+			userId,
+			itemCode,
+			quality,
+			quantity
+		);
+		
+		res.json({
+			success: true,
+			data: result,
+			message: 'Item consumed successfully'
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Consume error:', error);
+		
+		res.status(400).json({
+			success: false,
+			error: 'Consumption failed',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * GET /consume/status
+ * Check consumption cooldown status
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ *
+ * @returns {object} - Cooldown status
+ */
+router.get('/consume/status', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		
+		const result = await ConsumptionService.checkCooldown(userId);
+		
+		res.json({
+			success: true,
+			data: result
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Check cooldown error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to check cooldown',
+			message: error.message
+		});
+	}
+});
+
+/**
+ * GET /consume/history
+ * Get consumption history
+ *
+ * SECURITY:
+ * - Requires JWT authentication
+ * - User can only view their own history
+ *
+ * @query {number} page - Page number
+ * @query {number} limit - Items per page
+ * @returns {array} - Consumption history
+ */
+router.get('/consume/history', async (req, res) => {
+	try {
+		const userId = req.user.userId;
+		const { page, limit } = req.query;
+		
+		const result = await ConsumptionService.getHistory(userId, {
+			page: page ? parseInt(page) : 1,
+			limit: limit ? parseInt(limit) : 50
+		});
+		
+		res.json({
+			success: true,
+			data: result
+		});
+		
+	} catch (error) {
+		console.error('[API] ❌ Get history error:', error);
+		
+		res.status(500).json({
+			success: false,
+			error: 'Failed to retrieve history',
+			message: error.message
+		});
+	}
+});
+
+console.log('[Economy Routes] 🛒 Marketplace endpoints active');
+console.log('[Economy Routes] 🍽️  Consumption endpoints active');
+console.log('[Economy Routes] 📦 Inventory endpoints active');
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 

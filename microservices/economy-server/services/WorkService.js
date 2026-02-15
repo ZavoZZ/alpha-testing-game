@@ -322,7 +322,53 @@ class WorkService {
 			}
 			
 			// ================================================================
-			// TRANSACTION STEP 5: Update user stats
+			// TRANSACTION STEP 5: Grant work bonus items (Module 2.3)
+			// ================================================================
+			
+			if (company.work_rewards && company.work_rewards.length > 0) {
+				console.log('[WorkService] 🎁 Granting work bonus items...');
+				
+				const Inventory = global.Inventory;
+				
+				for (const reward of company.work_rewards) {
+					// Find or create inventory entry
+					const existingInventory = await Inventory.findOne({
+						owner_id: user._id,
+						owner_type: 'User',
+						item_code: reward.item_code,
+						quality: 1  // Default Q1 for work rewards
+					}).session(session);
+					
+					if (existingInventory) {
+						// Add to existing stack
+						existingInventory.quantity = FinancialMath.add(
+							existingInventory.quantity,
+							reward.quantity
+						);
+						await existingInventory.save({ session });
+						
+						console.log(`[WorkService] ✅ Added ${reward.quantity}x ${reward.item_code} to existing inventory`);
+					} else {
+						// Create new inventory entry
+						await Inventory.create([{
+							owner_id: user._id,
+							owner_type: 'User',
+							item_code: reward.item_code,
+							quality: 1,
+							quantity: reward.quantity,
+							acquisition_source: 'WORK_REWARD',
+							acquired_at: new Date(),
+							is_perishable: false,  // Will be updated by ItemPrototype logic if needed
+							expires_at: null
+						}], { session });
+						
+						console.log(`[WorkService] ✅ Created new inventory: ${reward.quantity}x ${reward.item_code}`);
+					}
+				}
+			}
+			
+			// ================================================================
+			// TRANSACTION STEP 6: Update user stats
 			// ================================================================
 			
 			console.log('[WorkService] 📊 Updating user stats...');
@@ -353,7 +399,7 @@ class WorkService {
 			console.log(`[WorkService]    Total Shifts: ${user.total_shifts_worked}`);
 			
 			// ================================================================
-			// TRANSACTION STEP 6: Create Ledger entries (Audit Trail)
+			// TRANSACTION STEP 7: Create Ledger entries (Audit Trail)
 			// ================================================================
 			
 			console.log('[WorkService] 📜 Creating ledger entries...');

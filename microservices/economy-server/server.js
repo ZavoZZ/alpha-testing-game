@@ -244,6 +244,21 @@ const userSchema = new mongoose.Schema({
 		get: (value) => value ? value.toString() : '0.0000'
 	},
 	
+	// =========================================================================
+	// CONSUMPTION SYSTEM (Module 2.3.C - Metabolism)
+	// =========================================================================
+	
+	/**
+	 * Consumption Cooldown
+	 * When player can consume items again
+	 * Prevents spam consumption
+	 */
+	consumption_cooldown_until: {
+		type: Date,
+		default: null,
+		index: true
+	},
+	
 	// Statistics
 	total_transactions: { type: Number, default: 0 },
 	total_volume_euro: { type: mongoose.Schema.Types.Decimal128, default: () => mongoose.Types.Decimal128.fromString('0.0000') },
@@ -641,6 +656,12 @@ const SystemLog = mongoose.model('SystemLog', systemLogSchema);
 
 const Company = require('./models/Company');
 
+// Module 2.3 - Marketplace & Metabolism Models
+const ItemPrototype = require('./models/ItemPrototype');
+const Inventory = require('./models/Inventory');
+const MarketplaceListing = require('./models/MarketplaceListing');
+const ConsumptionHistory = require('./models/ConsumptionHistory');
+
 // Export models to be used by services
 global.User = User;
 global.Treasury = Treasury;
@@ -648,6 +669,12 @@ global.Ledger = Ledger;
 global.SystemState = SystemState;
 global.SystemLog = SystemLog;
 global.Company = Company; // Module 2.2.B - Corporate Infrastructure
+
+// Module 2.3 - Marketplace & Metabolism
+global.ItemPrototype = ItemPrototype;
+global.Inventory = Inventory;
+global.MarketplaceListing = MarketplaceListing;
+global.ConsumptionHistory = ConsumptionHistory;
 
 // Import routes
 const economyRoutes = require('./routes/economy');
