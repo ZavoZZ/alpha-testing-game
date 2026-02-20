@@ -1,0 +1,193 @@
+# docker-compose.production.yml - Production Deployment Configuration
+# This file is used for deploying to production server (ovidiuguru.online)
+# 
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml down
+#   docker compose -f docker-compose.production.yml logs -f
+#
+# IMPORTANT: Create .env.production file with actual secrets before deploying!
+
+version: '3.8'
+
+services:
+  # MongoDB Database (Replica Set for Transactions)
+  mongodb:
+    image: mongo:7.0
+    container_name: mern-mongodb-prod
+    restart: always
+    ports:
+      - "27017:27017"  # Only for local access; in production use VPN/tunnel
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=${DB_NAME:-game_db}
+    command: mongod --replSet rs0 --bind_ip_all
+    networks:
+      - mern-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # Main Application Server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: mern-app-prod
+    restart: always
+    ports:
+      - "3000:3000"  # Direct access; in production use nginx reverse proxy
+    environment:
+      - NODE_ENV=production
+      - WEB_PORT=3000
+      - DB_URI=mongodb://mongodb:27017/${DB_NAME:-game_db}?replicaSet=rs0
+      - AUTH_URI=http://auth-server:3100
+      - NEWS_URI=http://news-server:3200
+      - CHAT_URI=http://chat-server:3300
+      - ECONOMY_URI=http://economy-server:3400
+      # JWT Secrets - MUST be set in .env.production
+      - SECRET_ACCESS=${SECRET_ACCESS}
+      - SECRET_REFRESH=${SECRET_REFRESH}
+      # Game password - MUST be set in .env.production
+      - GAME_PASSWORD=${GAME_PASSWORD}
+      # CORS - MUST be set to your domain in .env.production
+      - WEB_ORIGIN=${WEB_ORIGIN}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    command: npm start
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Authentication Microservice
+  auth-server:
+    build:
+      context: ./microservices/auth-server
+      dockerfile: Dockerfile.local
+    container_name: mern-auth-prod
+    restart: always
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=production
+      - PORT=3100
+      - DB_URI=mongodb://mongodb:27017/${DB_NAME:-game_db}?replicaSet=rs0
+      - WEB_ORIGIN=${WEB_ORIGIN}
+      # JWT Secrets - MUST be set in .env.production
+      - SECRET_ACCESS=${SECRET_ACCESS}
+      - SECRET_REFRESH=${SECRET_REFRESH}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # News Microservice
+  news-server:
+    build:
+      context: ./microservices/news-server
+      dockerfile: Dockerfile.local
+    container_name: mern-news-prod
+    restart: always
+    ports:
+      - "3200:3200"
+    environment:
+      - NODE_ENV=production
+      - PORT=3200
+      - DB_URI=mongodb://mongodb:27017/${DB_NAME:-game_db}?replicaSet=rs0
+      - WEB_ORIGIN=${WEB_ORIGIN}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Chat Microservice
+  chat-server:
+    build:
+      context: ./microservices/chat-server
+      dockerfile: Dockerfile.local
+    container_name: mern-chat-prod
+    restart: always
+    ports:
+      - "3300:3300"
+    environment:
+      - NODE_ENV=production
+      - PORT=3300
+      - DB_URI=mongodb://mongodb:27017/${DB_NAME:-game_db}?replicaSet=rs0
+      - WEB_ORIGIN=${WEB_ORIGIN}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Economy Microservice
+  economy-server:
+    build:
+      context: ./microservices/economy-server
+      dockerfile: Dockerfile.local
+    container_name: mern-economy-prod
+    restart: always
+    ports:
+      - "3400:3400"
+    environment:
+      - NODE_ENV=production
+      - PORT=3400
+      - DB_URI=mongodb://mongodb:27017/${DB_NAME:-game_db}?replicaSet=rs0
+      - WEB_ORIGIN=${WEB_ORIGIN}
+      # JWT Secrets - MUST be set in .env.production
+      - SECRET_ACCESS=${SECRET_ACCESS}
+      - SECRET_REFRESH=${SECRET_REFRESH}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+networks:
+  mern-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

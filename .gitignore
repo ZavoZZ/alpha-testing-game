@@ -136,3 +136,7 @@ screenshots/
 .env.codespaces
 docker-compose.local.yml
 
+# Production configuration (KEEP IN REPO!)
+!docker-compose.production.yml
+!.env.production
+
