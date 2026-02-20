@@ -1,0 +1,135 @@
+{
+  "project": {
+    "name": "MERN Economic Simulation Game",
+    "type": "Microservices Architecture",
+    "version": "2.3.0",
+    "stack": [
+      "React",
+      "Node.js",
+      "Express",
+      "MongoDB",
+      "Docker"
+    ],
+    "production": "https://ovidiuguru.online",
+    "description": "Economic simulation game with work system, inventory, marketplace, and real-time chat"
+  },
+  "services": {
+    "main": {
+      "port": 3000,
+      "description": "React frontend + proxy",
+      "path": "client/"
+    },
+    "auth": {
+      "port": 3100,
+      "description": "Authentication, JWT, User management",
+      "path": "microservices/auth-server/"
+    },
+    "news": {
+      "port": 3200,
+      "description": "News/blog system",
+      "path": "microservices/news-server/"
+    },
+    "chat": {
+      "port": 3300,
+      "description": "Real-time chat",
+      "path": "microservices/chat-server/"
+    },
+    "economy": {
+      "port": 3400,
+      "description": "Economy, Work, GameClock, Inventory, Marketplace",
+      "path": "microservices/economy-server/"
+    }
+  },
+  "database": {
+    "mongodb": {
+      "port": 27017,
+      "database": "auth_db",
+      "collections": [
+        "users",
+        "companies",
+        "systemstate",
+        "marketplacelistings",
+        "inventoryitems"
+      ]
+    },
+    "qdrant": {
+      "port": 6333,
+      "purpose": "Vector database for AI codebase indexing",
+      "collection": "mern-template-codebase"
+    }
+  },
+  "quickLinks": {
+    "authentication": {
+      "routes": "microservices/auth-server/routes/auth.js",
+      "server": "microservices/auth-server/server.js",
+      "userModel": "server/database/models/User.js"
+    },
+    "economy": {
+      "api": "microservices/economy-server/routes/economy.js",
+      "engine": "microservices/economy-server/services/EconomyEngine.js",
+      "workService": "microservices/economy-server/services/WorkService.js",
+      "gameClock": "microservices/economy-server/services/GameClock.js",
+      "inventoryService": "microservices/economy-server/services/InventoryService.js",
+      "marketplaceService": "microservices/economy-server/services/MarketplaceService.js"
+    },
+    "frontend": {
+      "app": "client/pages/app.jsx",
+      "dashboard": "client/pages/dashboard.jsx",
+      "workStation": "client/pages/panels/WorkStation.jsx",
+      "inventory": "client/pages/panels/InventoryPanel.jsx",
+      "marketplace": "client/pages/panels/MarketplacePanel.jsx",
+      "adminPanel": "client/pages/administration/admin-panel.jsx",
+      "login": "client/pages/accounts/login.jsx",
+      "signup": "client/pages/accounts/signup.jsx"
+    },
+    "config": {
+      "clientConfig": "client/config.js",
+      "dockerCompose": "docker-compose.local.yml",
+      "envLocal": ".env.local"
+    }
+  },
+  "apiEndpoints": {
+    "auth": {
+      "login": "POST /auth/login",
+      "signup": "POST /auth/signup",
+      "logout": "POST /auth/logout",
+      "verify": "GET /auth/verify",
+      "admin": "GET /auth/admin"
+    },
+    "economy": {
+      "balance": "GET /economy/balance",
+      "work": "POST /economy/work",
+      "workStatus": "GET /economy/work/status",
+      "inventory": "GET /economy/inventory",
+      "marketplace": "GET /economy/marketplace",
+      "transfer": "POST /economy/transfer"
+    }
+  },
+  "testAccounts": {
+    "production": {
+      "email": "testjucator@ovidiuguru.com",
+      "password": "Password123!",
+      "gamePassword": "testjoc"
+    }
+  },
+  "commands": {
+    "startLocal": "docker compose -f docker-compose.local.yml up -d",
+    "stopLocal": "docker compose -f docker-compose.local.yml down",
+    "logs": "docker compose -f docker-compose.local.yml logs -f",
+    "test": "scripts/local-test.cmd (Windows) or ./scripts/local-test.sh (Git Bash)",
+    "mongoShell": "docker exec -it mongodb mongosh auth_db"
+  },
+  "documentation": {
+    "projectStructure": "docs/PROJECT_STRUCTURE.md",
+    "economyAPI": "docs/ECONOMY_API_DOCUMENTATION.md",
+    "architecture": "docs/architecture/MICROSERVICES_ARCHITECTURE.md",
+    "localSetup": "docs/setup/LOCAL_DEVELOPMENT_GUIDE.md",
+    "quickStart": "docs/setup/QUICK_START.md"
+  },
+  "lastUpdated": "2026-02-20",
+  "maintainer": "Kilo AI Automation",
+  "statistics": {
+    "totalFiles": 77,
+    "totalFunctions": 765
+  }
+}

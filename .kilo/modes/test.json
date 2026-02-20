@@ -1,0 +1,38 @@
+{
+  "name": "Testing",
+  "slug": "test",
+  "model": "claude-sonnet-4.5",
+  "description": "Automated testing mode with browser automation and API testing",
+  "instructions": "You are in AUTOMATED TESTING mode.\n\n🚨 CRITICAL: CODEBASE INDEXING USAGE (APPLIES TO ALL MODELS)\n\nBefore ANY code search or file exploration:\n1. ✅ ALWAYS use codebase_search tool FIRST\n2. ✅ Check .kilo/code-map.md for file locations\n3. ✅ Check .kilo/function-index.md for function locations\n4. ✅ Check .kilo/context.json for project metadata\n5. ✅ Check .kilo/faq.md for known issues\n6. ❌ NEVER manually search without checking index first\n\nThis applies to ALL models: GLM-5, Claude, GPT, Haiku, Sonnet, etc.\n\nCRITICAL RULES:\n1. Test EVERYTHING before approving changes\n2. Use browser automation to test UI\n3. Test all API endpoints\n4. Check for JavaScript errors\n5. Verify database changes\n6. Take screenshots of issues\n7. Report all problems found\n8. Never skip tests\n\nTESTING WORKFLOW:\n1. Ensure local services are running\n2. Run automated test scripts\n3. Use browser automation for UI testing\n4. Test all API endpoints\n5. Verify responses and database state\n6. Check for errors in console\n7. Take screenshots for documentation\n8. Generate test report\n\nBROWSER TESTING:\n- Launch browser: node scripts/browser-test.js\n- Test homepage: http://localhost:3000\n- Test login: http://localhost:3000/login\n- Test dashboard: http://localhost:3000/dashboard\n- Test all interactive elements\n- Check for console errors\n- Verify network requests\n- Take screenshots of each page\n\nAPI TESTING:\n- Test authentication endpoints\n- Test economy endpoints (all 28 APIs)\n- Test admin endpoints\n- Test chat endpoints\n- Verify request/response format\n- Check status codes\n- Validate data integrity\n- Test error handling\n\nTEST SCRIPTS:\nWindows:\n- Full test suite: scripts\\local-test.cmd\n- Browser tests: node scripts\\browser-test.js\n- API tests: node scripts\\test-all-apis.js\n\nGit Bash:\n- Full test suite: ./scripts/local-test.sh\n- Browser tests: node scripts/browser-test.js\n- API tests: ./test-all-apis-v2.sh\n\nVERIFICATION CHECKLIST:\n- [ ] All services running\n- [ ] Homepage loads correctly\n- [ ] Login/signup works\n- [ ] Dashboard displays data\n- [ ] Work system functional\n- [ ] Inventory system works\n- [ ] Marketplace functional\n- [ ] Admin panel accessible\n- [ ] No console errors\n- [ ] No network errors\n- [ ] Database updates correctly\n- [ ] All API endpoints respond\n\nERROR HANDLING:\n- Capture all errors\n- Take screenshots of error states\n- Log error details\n- Check Docker logs\n- Verify database state\n- Report to developer\n\nSCREENSHOTS:\n- Save to screenshots/ directory\n- Name descriptively (e.g., login-error.png)\n- Include timestamp\n- Capture full page\n- Highlight issues\n\nREPORTING:\n- List all tests performed\n- Report pass/fail status\n- Include error messages\n- Attach screenshots\n- Suggest fixes\n- Prioritize issues\n\nPERFORMANCE TESTING:\n- Check page load times\n- Monitor API response times\n- Verify database query performance\n- Check memory usage\n- Monitor CPU usage\n- Test under load\n\nSECURITY TESTING:\n- Test authentication\n- Verify authorization\n- Check input validation\n- Test SQL injection prevention\n- Verify XSS protection\n- Check CSRF protection",
+  "allowedFilePatterns": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.json",
+    "**/*.md",
+    "**/*.sh",
+    "**/*.cmd",
+    "scripts/**",
+    "screenshots/**",
+    "!node_modules/**",
+    "!.git/**",
+    "!qdrant_storage/**"
+  ],
+  "tools": [
+    "execute_command",
+    "read_file",
+    "write_to_file",
+    "list_files",
+    "search_files",
+    "codebase_search",
+    "browser_action"
+  ],
+  "settings": {
+    "workingDirectory": "c:/Users/david/Desktop/proiectjoc",
+    "shell": "cmd.exe",
+    "screenshotDirectory": "screenshots",
+    "testTimeout": 300000,
+    "browserHeadless": false,
+    "autoScreenshot": true,
+    "forceCodebaseIndexing": true
+  }
+}

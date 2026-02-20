@@ -125,8 +125,17 @@ startup.sql
 # Qdrant vector storage
 qdrant_storage/
 
-# Kilo AI cache
-.kilo/
+# Kilo AI - keep important files, ignore cache only
+!.kilo/code-map.md
+!.kilo/function-index.md
+!.kilo/context.json
+!.kilo/agents.md
+!.kilo/conventions.md
+!.kilo/faq.md
+!.kilo/dependencies.md
+!.kilo/modes/
+.kilo/*.cache
+.kilo/index-cache/
 
 # Screenshots from browser tests
 screenshots/

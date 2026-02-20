@@ -1,0 +1,45 @@
+{
+  "name": "Development",
+  "slug": "dev",
+  "model": "claude-sonnet-4.5",
+  "description": "Local development mode with sandbox testing and Docker integration",
+  "instructions": "You are in LOCAL DEVELOPMENT mode.\n\n🚨 CRITICAL: CODEBASE INDEXING USAGE (APPLIES TO ALL MODELS)\n\nBefore ANY code search or file exploration:\n1. ✅ ALWAYS use codebase_search tool FIRST\n2. ✅ Check .kilo/code-map.md for file locations\n3. ✅ Check .kilo/function-index.md for function locations\n4. ✅ Check .kilo/context.json for project metadata\n5. ✅ Check .kilo/agents.md for standard workflows\n6. ❌ NEVER manually search without checking index first\n\nThis applies to ALL models: GLM-5, Claude, GPT, Haiku, Sonnet, etc.\n\nCRITICAL RULES:\n1. Work ONLY on local files in c:/Users/david/Desktop/proiectjoc\n2. Use Docker Compose for local services (docker-compose.local.yml)\n3. Test everything locally before any deployment\n4. Use local ports: 3000 (main), 3100 (auth), 3200 (economy), 3300 (chat), 3400 (admin)\n5. Never SSH to production server in this mode\n6. Use Git Bash or cmd.exe for Windows commands\n\nWORKFLOW:\n1. Make code changes locally\n2. Start local services: scripts/local-start.cmd or scripts/local-start.sh\n3. Test locally: scripts/local-test.cmd or scripts/local-test.sh\n4. Verify in browser: http://localhost:3000\n5. Check Docker logs: docker compose -f docker-compose.local.yml logs\n6. Fix any issues and repeat\n\nLOCAL ENVIRONMENT:\n- MongoDB: localhost:27017\n- Redis: localhost:6379\n- All services run in Docker containers\n- Use .env.local for configuration\n- Hot reload enabled for development\n\nCOMMANDS:\nWindows (cmd.exe):\n- Start: scripts\\local-start.cmd\n- Test: scripts\\local-test.cmd\n- Stop: docker compose -f docker-compose.local.yml down\n- Logs: docker compose -f docker-compose.local.yml logs -f\n\nGit Bash:\n- Start: ./scripts/local-start.sh\n- Test: ./scripts/local-test.sh\n- Stop: docker compose -f docker-compose.local.yml down\n- Logs: docker compose -f docker-compose.local.yml logs -f\n\nDEBUGGING:\n- Check container status: docker ps\n- View logs: docker compose -f docker-compose.local.yml logs [service]\n- Restart service: docker compose -f docker-compose.local.yml restart [service]\n- Shell into container: docker exec -it [container] sh\n\nFILE RESTRICTIONS:\n- Can edit all project files\n- Cannot modify production server files\n- Cannot modify .git directory\n- Be careful with package.json and package-lock.json\n\nTESTING:\n- Always test locally before committing\n- Use browser automation: node scripts/browser-test.js\n- Check all API endpoints work\n- Verify UI renders correctly\n- Test authentication flow\n- Test economy features\n\nGIT WORKFLOW:\n- Make changes locally\n- Test thoroughly\n- Commit with descriptive messages\n- Push to GitHub\n- Let CI/CD handle deployment",
+  "allowedFilePatterns": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.json",
+    "**/*.md",
+    "**/*.sh",
+    "**/*.cmd",
+    "**/*.css",
+    "**/*.html",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.env*",
+    "!node_modules/**",
+    "!.git/**",
+    "!qdrant_storage/**",
+    "!public/*.js",
+    "!public/*.css"
+  ],
+  "tools": [
+    "execute_command",
+    "read_file",
+    "write_to_file",
+    "edit_file",
+    "apply_diff",
+    "list_files",
+    "search_files",
+    "codebase_search",
+    "browser_action"
+  ],
+  "settings": {
+    "workingDirectory": "c:/Users/david/Desktop/proiectjoc",
+    "shell": "cmd.exe",
+    "dockerComposeFile": "docker-compose.local.yml",
+    "envFile": ".env.local",
+    "autoReload": true,
+    "hotReload": true,
+    "forceCodebaseIndexing": true
+  }
+}
