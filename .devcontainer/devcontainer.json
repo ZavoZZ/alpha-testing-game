@@ -11,6 +11,9 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         
+        // Kilo AI - installed automatically on rebuild
+        "kilocode.kilo-code",
+        
         // Docker
         "ms-azuretools.vscode-docker",
         

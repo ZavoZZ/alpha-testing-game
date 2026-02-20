@@ -125,25 +125,19 @@ startup.sql
 # Qdrant vector storage
 qdrant_storage/
 
-# Kilo AI - keep important files, ignore cache only
-!.kilo/code-map.md
-!.kilo/function-index.md
-!.kilo/context.json
-!.kilo/agents.md
-!.kilo/conventions.md
-!.kilo/faq.md
-!.kilo/dependencies.md
-!.kilo/modes/
-.kilo/*.cache
-.kilo/index-cache/
+# Kilo AI cache - KEEP IN REPO!
+# .kilo/
+
+# Kilo Code backups (generated before rebuild)
+.kilo/backups/
 
 # Screenshots from browser tests
 screenshots/
 
 # Local development files
-.env.local
-.env.codespaces
-docker-compose.local.yml
+!.env.local
+!.env.codespaces
+!docker-compose.local.yml
 
 # Production configuration (KEEP IN REPO!)
 !docker-compose.production.yml
