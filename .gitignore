@@ -138,6 +138,7 @@ screenshots/
 !.env.local
 !.env.codespaces
 !docker-compose.local.yml
+!.env.sandbox.example
 
 # Production configuration (KEEP IN REPO!)
 !docker-compose.production.yml

@@ -126,6 +126,68 @@ If you need Docker for development:
 
 ---
 
+## Running the Sandbox Without Docker
+
+Since Docker-in-Docker doesn't work in Codespaces, you can run the application using Node.js directly with MongoDB Atlas (cloud database).
+
+### Setup MongoDB Atlas
+
+1. Go to https://www.mongodb.com/cloud/atlas
+2. Create a free account
+3. Create a cluster (free M0 tier)
+4. Create a database user (username/password)
+5. Network access: Allow access from anywhere (0.0.0.0/0)
+6. Get connection string: Cluster -> Connect -> Connect your application
+
+### Configure Sandbox Environment
+
+```bash
+# Copy the example file
+cp .env.sandbox.example .env.sandbox
+
+# Edit .env.sandbox and add your MongoDB Atlas connection string
+nano .env.sandbox
+```
+
+### Start Services
+
+```bash
+# Install dependencies (one time)
+cd microservices/auth-server && npm install && cd ../..
+cd microservices/news-server && npm install && cd ../..
+cd microservices/chat-server && npm install && cd ../..
+cd microservices/economy-server && npm install && cd ../..
+
+# Or install all at once
+for dir in microservices/*/; do (cd "$dir" && npm install); done
+
+# Start all services
+./scripts/sandbox-start.sh
+```
+
+### Service URLs (Sandbox)
+
+- Main App: http://localhost:3000
+- Auth API: http://localhost:3100
+- News API: http://localhost:3200
+- Chat API: http://localhost:3300
+- Economy API: http://localhost:3400
+
+---
+
+## Production - Docker Still Works!
+
+The production deployment (docker-compose.production.yml) uses Docker and will work correctly because:
+- Production servers use a supported Linux distribution
+- Docker runs on the host OS, not inside a container
+
+To deploy to production:
+```bash
+docker compose -f docker-compose.production.yml up -d
+```
+
+---
+
 ## Testing the Fix
 
 To test that the fix works:
