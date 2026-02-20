@@ -1,0 +1,21 @@
+# Dockerfile.local - Economy Server (Development)
+# Game economy microservice for local development
+# Handles: Work system, Marketplace, Inventory, Consumption, GameClock
+
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies first (for better caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose the service port
+EXPOSE 3400
+
+# Start the server
+CMD ["npm", "start"]

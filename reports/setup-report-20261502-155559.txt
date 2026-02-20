@@ -1,0 +1,29 @@
+Complete Automated Setup Report 
+Generated: 15.02.2026 15:55:59,97 
+======================================== 
+ 
+ 
+[STEP 1/5] PATH Configuration 
+---------------------------------------- 
+At C:\Users\david\Desktop\proiectjoc\setup-windows-path.ps1:160 char:1
++ }
++ ~
+Unexpected token '}' in expression or statement.
+At C:\Users\david\Desktop\proiectjoc\setup-windows-path.ps1:200 char:73
++ ... PATH_SETUP_GUIDE.md for manual instructions." -ForegroundColor Yellow
++                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~
+The string is missing the terminator: ".
+At C:\Users\david\Desktop\proiectjoc\setup-windows-path.ps1:185 char:13
++ if ($allOk) {
++             ~
+Missing closing '}' in statement block or type definition.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+ 
+Status: COMPLETED WITH WARNINGS 
+ 
+ 
+[STEP 2/5] Tool Verification 
+---------------------------------------- 
+Docker: Docker version 29.2.0, build 0b9d198 
+Node.js: v24.13.1 

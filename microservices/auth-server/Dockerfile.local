@@ -1,0 +1,20 @@
+# Dockerfile.local - Auth Server (Development)
+# Authentication microservice for local development
+
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies first (for better caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose the service port
+EXPOSE 3100
+
+# Start the server
+CMD ["npm", "start"]

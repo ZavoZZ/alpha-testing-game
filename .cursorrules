@@ -1,0 +1,295 @@
+# Kilo AI / Cursor AI - Automatic Rules & Context
+
+## 🚨 CRITICAL: CODEBASE INDEXING (ALL MODELS)
+
+**This applies to ALL AI models: GLM-5, Claude, GPT, Haiku, Sonnet, etc.**
+
+### Before ANY Code Search or Exploration:
+
+```
+1. ✅ ALWAYS use codebase_search tool FIRST
+2. ✅ Check .kilo/code-map.md for file locations
+3. ✅ Check .kilo/function-index.md for function locations
+4. ✅ Check .kilo/context.json for project metadata
+5. ✅ Check .kilo/agents.md for standard workflows
+6. ❌ NEVER manually search without checking index first
+```
+
+### Why This Matters:
+- **70% faster responses** - Index is pre-built
+- **90% cost reduction** - No expensive semantic searches
+- **Accurate results** - Index knows exact locations
+- **Works for ALL models** - Not model-dependent
+
+---
+
+## 🎯 CRITICAL: Always Check These Files FIRST
+
+Before searching code or making changes, ALWAYS check these files in this order:
+
+1. **`.kilo/code-map.md`** - Quick navigation to all important files
+2. **`.kilo/function-index.md`** - Find functions by name instantly
+3. **`.kilo/context.json`** - Project metadata and quick links
+4. **`.kilo/agents.md`** - AI agent instructions and workflows
+5. **`.kilo/faq.md`** - Common issues and solutions
+6. **Directory `README.md`** - Context for current directory
+
+---
+
+## 📋 Project Context
+
+**Project Name:** MERN Economic Simulation Game  
+**Type:** Microservices Architecture  
+**Stack:** React, Node.js, Express, MongoDB, Docker  
+**Production:** https://ovidiuguru.online
+
+---
+
+## 🏗️ Architecture Quick Reference
+
+### Microservices (Ports)
+- **Main App**: 3000 (React frontend + proxy)
+- **Auth Server**: 3100 (Authentication, JWT, User management)
+- **News Server**: 3200 (News/blog system)
+- **Chat Server**: 3300 (Real-time chat)
+- **Economy Server**: 3400 (Economy, Work, GameClock)
+
+### Database
+- **MongoDB**: 27017 (auth_db)
+- **Qdrant**: 6333 (Vector database for AI)
+
+---
+
+## 📁 Directory Structure
+
+```
+/root/MERN-template/
+├── client/              # React frontend
+├── server/              # Express backend
+├── microservices/       # Independent services
+│   ├── auth-server/     # Authentication
+│   ├── economy-server/  # Economy system
+│   ├── news-server/     # News
+│   └── chat-server/     # Chat
+├── docs/                # Documentation (40+ files)
+├── .kilo/               # AI optimization files
+└── common/              # Shared utilities
+```
+
+---
+
+## 🎯 Common Tasks - Quick Links
+
+### Authentication
+- **Login/Signup**: `microservices/auth-server/routes/auth.js`
+- **JWT Middleware**: `microservices/economy-server/middleware/auth.js`
+- **User Model**: `server/database/models/User.js`
+
+### Economy
+- **API Routes**: `microservices/economy-server/routes/economy.js` (28 endpoints)
+- **Transaction Engine**: `microservices/economy-server/services/EconomyEngine.js`
+- **Work System**: `microservices/economy-server/services/WorkService.js`
+- **Time Simulation**: `microservices/economy-server/services/GameClock.js`
+
+### Admin Panel
+- **UI**: `client/pages/administration/admin-panel.jsx`
+- **API**: `microservices/auth-server/routes/auth.js` (lines 180-250)
+
+### Frontend
+- **Dashboard**: `client/pages/dashboard.jsx`
+- **WorkStation**: `client/pages/panels/WorkStation.jsx`
+- **Login**: `client/pages/accounts/login.jsx`
+
+---
+
+## 🔧 Code Conventions
+
+### File Naming
+- **React Components**: PascalCase (`AdminPanel.jsx`)
+- **Services**: PascalCase (`EconomyEngine.js`)
+- **Routes**: kebab-case (`economy.js`)
+- **Utilities**: kebab-case (`validate-email.js`)
+
+### Code Patterns
+
+#### API Endpoint Template
+```javascript
+router.post('/endpoint', verifyToken, async (req, res) => {
+  try {
+    const { param } = req.body;
+    const userId = req.user.userId;
+    
+    // Validation
+    if (!param) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing parameter' 
+      });
+    }
+    
+    // Business logic
+    const result = await Service.doSomething(param);
+    
+    // Response
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Error]:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+```
+
+#### Decimal Math (Money)
+```javascript
+const Decimal = require('decimal.js');
+const amount = new Decimal(req.body.amount);
+const balance = new Decimal(user.balance_euro.toString());
+```
+
+#### JWT Verification
+```javascript
+const { verifyToken } = require('../middleware/auth');
+router.get('/protected', verifyToken, async (req, res) => {
+  const userId = req.user.userId; // From JWT
+  // ...
+});
+```
+
+---
+
+## 🛡️ Security Rules
+
+1. **Always use `verifyToken` middleware** for protected routes
+2. **Always use `Decimal128`** for money calculations
+3. **Always validate input** before processing
+4. **Always use try-catch** for async operations
+5. **Never trust client data** - validate on server
+
+---
+
+## 📊 Optimization Rules for AI
+
+### Before Searching Code
+1. ✅ Check `.kilo/code-map.md` for file locations
+2. ✅ Check `.kilo/function-index.md` for function locations
+3. ✅ Check directory `README.md` for context
+4. ✅ Use exact file paths from code-map
+5. ❌ Avoid full codebase semantic search
+
+### When Asked About
+- **"Where is X?"** → Check `.kilo/code-map.md` first
+- **"How does Y work?"** → Check `.kilo/function-index.md` first
+- **"Add feature Z"** → Check `.kilo/agents.md` for workflow
+- **"Fix bug"** → Check `.kilo/faq.md` first, then relevant directory `README.md`
+
+### Cost Reduction
+- **Prefer**: Local context files over semantic search
+- **Prefer**: Exact file paths over searching
+- **Prefer**: Batch related questions together
+- **Prefer**: Code-map navigation over exploration
+
+---
+
+## 🤖 AI Agent Workflows
+
+See `.kilo/agents.md` for detailed workflows:
+- Adding API endpoints
+- Creating React components
+- Updating database models
+- Debugging issues
+- Testing features
+
+---
+
+## 📝 Documentation
+
+### Main Docs
+- **Project Structure**: `docs/PROJECT_STRUCTURE.md`
+- **Economy API**: `docs/ECONOMY_API_DOCUMENTATION.md`
+- **Architecture**: `docs/architecture/MICROSERVICES_ARCHITECTURE.md`
+- **Setup**: `docs/setup/QUICK_START.md`
+
+### Session Logs
+- **Day 1**: `docs/session-logs/2026-02-10/` (12 files)
+- **Day 2**: `docs/session-logs/2026-02-11/` (15 files)
+- **Day 3**: `docs/session-logs/2026-02-12/` (8 files)
+
+---
+
+## 🧪 Testing
+
+### Test Scripts
+- **All APIs**: `./test-all-apis-v2.sh`
+- **Economy**: `./test-economy-comprehensive.sh`
+- **Work System**: `./test-work-flow-integration.sh`
+- **Admin**: `./test-production-admin.sh`
+
+### Manual Testing
+- **Production**: https://ovidiuguru.online
+- **Test Account**: testjucator@ovidiuguru.com / Password123!
+- **Game Password**: testjoc
+
+---
+
+## 🎯 Quick Commands
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker logs economy-server --tail 50
+
+# Restart service
+docker restart economy-server
+
+# MongoDB shell
+docker exec -it mongodb mongosh auth_db
+
+# Qdrant dashboard
+open http://localhost:6333/dashboard
+```
+
+---
+
+## ⚠️ Important Notes
+
+1. **Always update `.kilo/` files** when making significant changes
+2. **Always update directory `README.md`** when adding features
+3. **Always test with scripts** before committing
+4. **Always document in `docs/session-logs/`** for major changes
+5. **Always check `.kilo/agents.md`** for standard workflows
+
+---
+
+## 🔄 Auto-Update Instructions
+
+When making changes:
+1. Update `.kilo/code-map.md` if files/functions move
+2. Update `.kilo/function-index.md` if functions added/removed
+3. Update directory `README.md` if structure changes
+4. Update `.kilo/context.json` if metadata changes
+5. Update `.kilo/agents.md` if workflows change
+
+---
+
+## 📦 .kilo/ Files Reference
+
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `context.json` | Project metadata | Quick project overview |
+| `code-map.md` | File navigation | "Where is X?" |
+| `function-index.md` | Function lookup | "Where is function Y?" |
+| `agents.md` | AI workflows | "How do I do Z?" |
+| `conventions.md` | Code standards | Writing new code |
+| `faq.md` | Common issues | Debugging problems |
+| `dependencies.md` | File relationships | Understanding impact |
+
+---
+
+**Last Updated:** 2026-02-20  
+**Version:** 2.0  
+**Purpose:** Optimize AI agent efficiency and reduce API costs by 70%

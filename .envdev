@@ -1,0 +1,19 @@
+WEB_PORT=3000
+
+# MongoDB connection URI
+DB_URI=mongodb://localhost:27017/game_db
+
+# Microservices URIs
+AUTH_URI=http://localhost:3200
+NEWS_URI=http://localhost:3100
+CHAT_URI=http://localhost:3300
+
+# JWT Secrets
+SECRET_ACCESS=your_jwt_secret_key_change_this_in_production
+SECRET_REFRESH=your_refresh_secret_key_change_this_in_production
+
+# Game access password for testing environment
+GAME_PASSWORD=testjoc
+
+# CORS Origin
+WEB_ORIGIN=*

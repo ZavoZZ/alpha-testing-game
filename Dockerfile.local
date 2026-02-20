@@ -1,0 +1,20 @@
+# Dockerfile.local - Main Application (Development)
+# This Dockerfile is optimized for local development with hot-reload support
+
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies first (for better caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose the application port
+EXPOSE 3000
+
+# Start in development mode with hot-reload
+CMD ["npm", "run", "dev"]

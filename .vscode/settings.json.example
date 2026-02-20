@@ -1,0 +1,143 @@
+{
+  "// =====================================================================": "",
+  "// VS Code Settings Template for Local Development": "",
+  "// =====================================================================": "",
+  "// INSTRUCTIONS:": "",
+  "// 1. Copy this file to .vscode/settings.json": "",
+  "// 2. Replace placeholder values with your actual API keys": "",
+  "// 3. DO NOT commit .vscode/settings.json to Git (it's in .gitignore)": "",
+  "// =====================================================================": "",
+
+  "// =====================================================================": "",
+  "// Kilo AI Codebase Indexing Configuration": "",
+  "// =====================================================================": "",
+  "kilo.codebaseIndexing.enabled": true,
+  "kilo.codebaseIndexing.provider": "openai",
+  "kilo.codebaseIndexing.openai.apiKey": "sk-proj-YOUR_OPENAI_API_KEY_HERE",
+  "kilo.codebaseIndexing.openai.model": "text-embedding-3-small",
+  "kilo.codebaseIndexing.vectorStore": "qdrant",
+  "kilo.codebaseIndexing.qdrant.url": "http://localhost:6333",
+  "kilo.codebaseIndexing.qdrant.collectionName": "mern-template-codebase",
+  "kilo.codebaseIndexing.chunkSize": 1000,
+  "kilo.codebaseIndexing.chunkOverlap": 200,
+
+  "// =====================================================================": "",
+  "// Kilo AI Automation Settings": "",
+  "// =====================================================================": "",
+  "kilo.automation.enabled": true,
+  "kilo.automation.retryOnFailure": true,
+  "kilo.automation.maxRetries": 3,
+  "kilo.automation.readCommandOutput": true,
+  "kilo.automation.openBrowser": true,
+
+  "// =====================================================================": "",
+  "// Editor Settings": "",
+  "// =====================================================================": "",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "editor.insertSpaces": false,
+  "editor.detectIndentation": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  "// =====================================================================": "",
+  "// File Associations": "",
+  "// =====================================================================": "",
+  "files.associations": {
+    "*.jsx": "javascriptreact",
+    "*.js": "javascript",
+    ".env*": "dotenv"
+  },
+
+  "// =====================================================================": "",
+  "// Files to Exclude from Explorer": "",
+  "// =====================================================================": "",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/qdrant_storage": true,
+    "**/.kilo": true,
+    "**/public/*.html": true,
+    "**/public/*.js": true,
+    "**/public/*.css": true,
+    "**/public/*.map": true
+  },
+
+  "// =====================================================================": "",
+  "// Search Exclusions": "",
+  "// =====================================================================": "",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/qdrant_storage": true,
+    "**/.kilo": true,
+    "**/public": true,
+    "**/dist": true,
+    "**/.git": true
+  },
+
+  "// =====================================================================": "",
+  "// JavaScript/TypeScript Settings": "",
+  "// =====================================================================": "",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "javascript.suggest.autoImports": true,
+  "javascript.validate.enable": true,
+
+  "// =====================================================================": "",
+  "// ESLint Settings": "",
+  "// =====================================================================": "",
+  "eslint.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact"
+  ],
+
+  "// =====================================================================": "",
+  "// Git Settings": "",
+  "// =====================================================================": "",
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+
+  "// =====================================================================": "",
+  "// Terminal Settings": "",
+  "// =====================================================================": "",
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+
+  "// =====================================================================": "",
+  "// Docker Settings": "",
+  "// =====================================================================": "",
+  "docker.showStartPage": false,
+
+  "// =====================================================================": "",
+  "// Prettier Settings": "",
+  "// =====================================================================": "",
+  "prettier.singleQuote": true,
+  "prettier.useTabs": true,
+  "prettier.tabWidth": 2,
+
+  "// =====================================================================": "",
+  "// Live Server Settings (if using)": "",
+  "// =====================================================================": "",
+  "liveServer.settings.port": 5500,
+  "liveServer.settings.root": "/public",
+
+  "// =====================================================================": "",
+  "// Workspace Trust": "",
+  "// =====================================================================": "",
+  "security.workspace.trust.enabled": true,
+
+  "// =====================================================================": "",
+  "// NOTES": "",
+  "// =====================================================================": "",
+  "// - Keep your API keys secure and never commit them to Git": "",
+  "// - The .vscode/settings.json file is in .gitignore for security": "",
+  "// - Update Kilo AI settings based on your needs": "",
+  "// - Adjust editor settings to match your preferences": "",
+  "// ====================================================================="
+}
