@@ -92,7 +92,7 @@ start_service() {
     
     # Start the service in background
     cd "$dir"
-    PORT=$port node server.js > "../logs/$name.log" 2>&1 &
+    PORT=$port node server.js > "$OLDPWD/logs/$name.log" 2>&1 &
     local pid=$!
     echo -e "${GREEN}  Started $name (PID: $pid)${NC}"
     cd - > /dev/null
@@ -100,6 +100,9 @@ start_service() {
 
 # Create logs directory
 mkdir -p logs
+
+# Load environment variables from .env.sandbox
+export $(cat .env.sandbox | grep -v '^#' | xargs)
 
 # Install dependencies for all services if needed
 echo -e "${YELLOW}Checking dependencies...${NC}"
@@ -133,11 +136,13 @@ echo ""
 echo -e "${YELLOW}Waiting for microservices to initialize (5 seconds)...${NC}"
 sleep 5
 
-# Start main app
-echo -e "${BLUE}Starting Main Application...${NC}"
-cd .
-npm run dev > logs/main-app.log 2>&1 &
-echo -e "${GREEN}Started main app (check logs/main-app.log for details)${NC}"
+# Load environment variables for webpack dev server
+export $(cat .env.sandbox | grep -v '^#' | xargs)
+
+# Start webpack dev server with API proxy
+echo -e "${BLUE}Starting Webpack Dev Server with API Proxy...${NC}"
+API_PROXY_URL=http://localhost:3000 npm run dev:client > logs/webpack.log 2>&1 &
+echo -e "${GREEN}Started webpack dev server (check logs/webpack.log for details)${NC}"
 echo ""
 
 echo -e "${GREEN}========================================${NC}"
