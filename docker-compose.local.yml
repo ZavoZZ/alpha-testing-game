@@ -1,0 +1,169 @@
+# docker-compose.local.yml - Local Development Configuration
+# This file is used for local development with Docker
+# 
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d
+#   docker compose -f docker-compose.local.yml down
+#   docker compose -f docker-compose.local.yml logs -f
+#
+# For codespaces, this file should be tracked in git (see .gitignore)
+
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: mern-mongodb-local
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=game_db
+    command: mongod --replSet rs0 --bind_ip_all
+    networks:
+      - mern-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Application Server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: mern-app-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - WEB_PORT=3000
+      - DB_URI=mongodb://mongodb:27017/game_db?replicaSet=rs0
+      - AUTH_URI=http://auth-server:3100
+      - NEWS_URI=http://news-server:3200
+      - CHAT_URI=http://chat-server:3300
+      - ECONOMY_URI=http://economy-server:3400
+      # JWT Secrets - for local development only!
+      - SECRET_ACCESS=dev_jwt_secret_key_change_in_production
+      - SECRET_REFRESH=dev_refresh_secret_key_change_in_production
+      # Game password - for local testing
+      - GAME_PASSWORD=testjoc
+      # CORS - allow all for local development
+      - WEB_ORIGIN=*
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    command: npm run dev
+    volumes:
+      - .:/workspaces/alpha-testing-game
+      - /workspaces/alpha-testing-game/node_modules
+
+  # Authentication Microservice
+  auth-server:
+    build:
+      context: ./microservices/auth-server
+      dockerfile: Dockerfile.local
+    container_name: mern-auth-local
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=development
+      - PORT=3100
+      - DB_URI=mongodb://mongodb:27017/game_db?replicaSet=rs0
+      - WEB_ORIGIN=*
+      # JWT Secrets
+      - SECRET_ACCESS=dev_jwt_secret_key_change_in_production
+      - SECRET_REFRESH=dev_refresh_secret_key_change_in_production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    volumes:
+      - ./microservices/auth-server:/workspaces/alpha-testing-game/microservices/auth-server
+
+  # News Microservice
+  news-server:
+    build:
+      context: ./microservices/news-server
+      dockerfile: Dockerfile.local
+    container_name: mern-news-local
+    restart: unless-stopped
+    ports:
+      - "3200:3200"
+    environment:
+      - NODE_ENV=development
+      - PORT=3200
+      - DB_URI=mongodb://mongodb:27017/game_db?replicaSet=rs0
+      - WEB_ORIGIN=*
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    volumes:
+      - ./microservices/news-server:/workspaces/alpha-testing-game/microservices/news-server
+
+  # Chat Microservice
+  chat-server:
+    build:
+      context: ./microservices/chat-server
+      dockerfile: Dockerfile.local
+    container_name: mern-chat-local
+    restart: unless-stopped
+    ports:
+      - "3300:3300"
+    environment:
+      - NODE_ENV=development
+      - PORT=3300
+      - DB_URI=mongodb://mongodb:27017/game_db?replicaSet=rs0
+      - WEB_ORIGIN=*
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    volumes:
+      - ./microservices/chat-server:/workspaces/alpha-testing-game/microservices/chat-server
+
+  # Economy Microservice
+  economy-server:
+    build:
+      context: ./microservices/economy-server
+      dockerfile: Dockerfile.local
+    container_name: mern-economy-local
+    restart: unless-stopped
+    ports:
+      - "3400:3400"
+    environment:
+      - NODE_ENV=development
+      - PORT=3400
+      - DB_URI=mongodb://mongodb:27017/game_db?replicaSet=rs0
+      - WEB_ORIGIN=*
+      # JWT Secrets
+      - SECRET_ACCESS=dev_jwt_secret_key_change_in_production
+      - SECRET_REFRESH=dev_refresh_secret_key_change_in_production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mern-network
+    volumes:
+      - ./microservices/economy-server:/workspaces/alpha-testing-game/microservices/economy-server
+
+networks:
+  mern-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

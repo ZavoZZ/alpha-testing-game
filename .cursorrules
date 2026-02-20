@@ -63,7 +63,7 @@ Before searching code or making changes, ALWAYS check these files in this order:
 ## 📁 Directory Structure
 
 ```
-/root/MERN-template/
+/workspaces/alpha-testing-game/
 ├── client/              # React frontend
 ├── server/              # Express backend
 ├── microservices/       # Independent services

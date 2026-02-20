@@ -4,9 +4,10 @@ WEB_PORT=3000
 DB_URI=mongodb://localhost:27017/game_db
 
 # Microservices URIs
-AUTH_URI=http://localhost:3200
-NEWS_URI=http://localhost:3100
+AUTH_URI=http://localhost:3100
+NEWS_URI=http://localhost:3200
 CHAT_URI=http://localhost:3300
+ECONOMY_URI=http://localhost:3400
 
 # JWT Secrets
 SECRET_ACCESS=your_jwt_secret_key_change_this_in_production
