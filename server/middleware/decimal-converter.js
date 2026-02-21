@@ -124,14 +124,31 @@ const convertDecimals = (obj, depth = 0) => {
 		return obj;
 	}
 
-	// Handle $numberDecimal object (JSON serialized)
-	if (obj.$numberDecimal !== undefined && Object.keys(obj).length === 1) {
+	// Handle $numberDecimal object (JSON serialized) - regardless of other keys
+	if (obj.$numberDecimal !== undefined) {
 		return toNumber(obj);
 	}
 
 	// Handle Decimal128 from BSON/Mongoose
 	if (isDecimal128(obj)) {
 		return toNumber(obj);
+	}
+
+	// Handle any object that has a toString returning a decimal number
+	// This catches any remaining Decimal128-like objects
+	if (typeof obj.toString === 'function') {
+		try {
+			const str = obj.toString();
+			// If toString returns a valid decimal number (not [object Object])
+			if (/^-?\d+\.?\d*$/.test(str) && str !== '[object Object]') {
+				const num = parseFloat(str);
+				if (!isNaN(num)) {
+					return num;
+				}
+			}
+		} catch (e) {
+			// Ignore errors
+		}
 	}
 
 	// Handle regular objects - convert all properties
