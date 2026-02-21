@@ -173,8 +173,30 @@ const decimalConverterMiddleware = (req, res, next) => {
 
 	// Override metoda json
 	res.json = (data) => {
+		// Debug: log if data contains $numberDecimal
+		if (data && typeof data === 'object') {
+			const str = JSON.stringify(data);
+			if (str.includes('$numberDecimal')) {
+				console.log(
+					'[DecimalConverter] Detected $numberDecimal in response, converting...',
+				);
+				console.log('[DecimalConverter] Original data:', str.substring(0, 500));
+			}
+		}
+
 		// Convertește toate valorile Decimal128
 		const convertedData = convertDecimals(data);
+
+		// Debug: log after conversion
+		if (convertedData && typeof convertedData === 'object') {
+			const convertedStr = JSON.stringify(convertedData);
+			if (convertedStr.includes('$numberDecimal')) {
+				console.log(
+					'[DecimalConverter] WARNING: $numberDecimal still present after conversion!',
+				);
+			}
+		}
+
 		return originalJson(convertedData);
 	};
 
