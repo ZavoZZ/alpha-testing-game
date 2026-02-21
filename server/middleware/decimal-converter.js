@@ -16,12 +16,35 @@ const isDecimal128 = (value) => {
 	if (value === null || value === undefined) return false;
 	if (typeof value !== 'object') return false;
 
+	// Verifică _bsontype (specific BSON pentru Mongoose 7+)
+	if (value._bsontype === 'Decimal128') return true;
+
 	// Verifică constructor name
 	const constructorName = value.constructor?.name;
 	if (constructorName === 'Decimal128') return true;
 
 	// Verifică dacă are $numberDecimal (JSON serializat)
 	if (value.$numberDecimal !== undefined) return true;
+
+	// Verifică dacă are metode specifice Decimal128
+	if (
+		typeof value.toString === 'function' &&
+		typeof value.toJSON === 'function'
+	) {
+		// Încearcă să detecteze prin toString
+		try {
+			const str = value.toString();
+			// Decimal128 toString returnează un număr decimal
+			if (/^-?\d+\.?\d*$/.test(str) && value.toJSON) {
+				const json = value.toJSON();
+				if (json && json.$numberDecimal !== undefined) {
+					return true;
+				}
+			}
+		} catch (e) {
+			// Nu e Decimal128
+		}
+	}
 
 	return false;
 };
