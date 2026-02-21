@@ -4,13 +4,28 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 const SECRET_ACCESS = process.env.SECRET_ACCESS || 'default_secret_change_this';
-const SECRET_REFRESH = process.env.SECRET_REFRESH || 'default_refresh_secret_change_this';
+const SECRET_REFRESH =
+	process.env.SECRET_REFRESH || 'default_refresh_secret_change_this';
+
+// Token expiry configurations
+const TOKEN_EXPIRY = {
+	normal: {
+		access: '1h',
+		refresh: '7d',
+		cookieMaxAge: 7 * 24 * 60 * 60 * 1000,
+	},
+	rememberMe: {
+		access: '24h',
+		refresh: '30d',
+		cookieMaxAge: 30 * 24 * 60 * 60 * 1000,
+	},
+};
 
 module.exports = (User) => {
 	const router = express.Router();
 
-	// Helper: Generate tokens
-	const generateTokens = (user) => {
+	// Helper: Generate tokens with optional rememberMe
+	const generateTokens = (user, rememberMe = false) => {
 		const payload = {
 			id: user._id,
 			username: user.username,
@@ -20,10 +35,24 @@ module.exports = (User) => {
 			mod: user.role === 'moderator' || user.role === 'admin',
 		};
 
-		const accessToken = jwt.sign(payload, SECRET_ACCESS, { expiresIn: '1h' });
-		const refreshToken = jwt.sign({ id: user._id }, SECRET_REFRESH, { expiresIn: '7d' });
+		const expiryConfig = rememberMe
+			? TOKEN_EXPIRY.rememberMe
+			: TOKEN_EXPIRY.normal;
 
-		return { accessToken, refreshToken };
+		const accessToken = jwt.sign(payload, SECRET_ACCESS, {
+			expiresIn: expiryConfig.access,
+		});
+		const refreshToken = jwt.sign(
+			{ id: user._id, rememberMe },
+			SECRET_REFRESH,
+			{ expiresIn: expiryConfig.refresh },
+		);
+
+		return {
+			accessToken,
+			refreshToken,
+			cookieMaxAge: expiryConfig.cookieMaxAge,
+		};
 	};
 
 	// POST /signup
@@ -32,53 +61,59 @@ module.exports = (User) => {
 			const { email, username, password, contact } = req.body;
 
 			if (!email || !username || !password) {
-				return res.status(400).send('Email, username, and password are required');
+				return res
+					.status(400)
+					.send('Email, username, and password are required');
 			}
 
 			if (password.length < 8) {
 				return res.status(400).send('Password must be at least 8 characters');
 			}
 
-			const existingUser = await User.findOne({ 
-				$or: [{ email: email.toLowerCase() }, { username }] 
+			const existingUser = await User.findOne({
+				$or: [{ email: email.toLowerCase() }, { username }],
 			});
 
 			if (existingUser) {
-				return res.status(409).send('User with this email or username already exists');
+				return res
+					.status(409)
+					.send('User with this email or username already exists');
 			}
 
-		const hashedPassword = await bcrypt.hash(password, 10);
+			const hashedPassword = await bcrypt.hash(password, 10);
 
-		const user = await User.create({
-			// Authentication & Identity
-			email: email.toLowerCase(),
-			username,
-			password: hashedPassword,
-			role: 'user',
-			isActive: true,
-			
-			// Economy Balances (CRITICAL: Initialize for new players!)
-			balance_euro: mongoose.Types.Decimal128.fromString('0.0000'),
-			balance_gold: mongoose.Types.Decimal128.fromString('0.0000'),
-			balance_ron: mongoose.Types.Decimal128.fromString('0.0000'),
-			
-			// Tax Reserve Balances (for admin/system users)
-			collected_transfer_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
-			collected_market_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
-			collected_work_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
-			
-			// Security & Gameplay
-			is_frozen_for_fraud: false,
-			productivity_multiplier: mongoose.Types.Decimal128.fromString('1.0000'),
-			
-			// Statistics
-			total_transactions: 0,
-			total_volume_euro: mongoose.Types.Decimal128.fromString('0.0000'),
-			
-			// Timestamps
-			last_transaction_at: null,
-			economy_joined_at: new Date()
-		});
+			const user = await User.create({
+				// Authentication & Identity
+				email: email.toLowerCase(),
+				username,
+				password: hashedPassword,
+				role: 'user',
+				isActive: true,
+
+				// Economy Balances (CRITICAL: Initialize for new players!)
+				balance_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+				balance_gold: mongoose.Types.Decimal128.fromString('0.0000'),
+				balance_ron: mongoose.Types.Decimal128.fromString('0.0000'),
+
+				// Tax Reserve Balances (for admin/system users)
+				collected_transfer_tax_euro:
+					mongoose.Types.Decimal128.fromString('0.0000'),
+				collected_market_tax_euro:
+					mongoose.Types.Decimal128.fromString('0.0000'),
+				collected_work_tax_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+
+				// Security & Gameplay
+				is_frozen_for_fraud: false,
+				productivity_multiplier: mongoose.Types.Decimal128.fromString('1.0000'),
+
+				// Statistics
+				total_transactions: 0,
+				total_volume_euro: mongoose.Types.Decimal128.fromString('0.0000'),
+
+				// Timestamps
+				last_transaction_at: null,
+				economy_joined_at: new Date(),
+			});
 
 			console.log(`New user registered: ${username} (${email})`);
 			res.status(201).send('Account created successfully! Please login.');
@@ -91,8 +126,11 @@ module.exports = (User) => {
 	// POST /login
 	router.post('/login', async (req, res) => {
 		try {
-			console.log('[Login] Received request body:', req.body);
-			const { email, password } = req.body;
+			console.log('[Login] Received request body:', {
+				...req.body,
+				password: '[REDACTED]',
+			});
+			const { email, password, rememberMe } = req.body;
 
 			if (!email || !password) {
 				console.log('[Login] Missing email or password');
@@ -118,16 +156,21 @@ module.exports = (User) => {
 			user.lastLogin = new Date();
 			await user.save();
 
-			const { accessToken, refreshToken } = generateTokens(user);
+			const { accessToken, refreshToken, cookieMaxAge } = generateTokens(
+				user,
+				rememberMe === true,
+			);
 
 			res.cookie('refreshToken', refreshToken, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
 				sameSite: 'lax',
-				maxAge: 7 * 24 * 60 * 60 * 1000,
+				maxAge: cookieMaxAge,
 			});
 
-			console.log(`User logged in: ${user.username}`);
+			console.log(
+				`User logged in: ${user.username} (rememberMe: ${rememberMe === true})`,
+			);
 			res.send(accessToken);
 		} catch (error) {
 			console.error('Login error:', error);
@@ -147,11 +190,15 @@ module.exports = (User) => {
 			const user = await User.findOne({ email: email.toLowerCase() });
 
 			if (!user) {
-				return res.send('If an account with that email exists, a password reset link has been sent.');
+				return res.send(
+					'If an account with that email exists, a password reset link has been sent.',
+				);
 			}
 
 			console.log(`Password reset requested for: ${email}`);
-			res.send('If an account with that email exists, a password reset link has been sent.');
+			res.send(
+				'If an account with that email exists, a password reset link has been sent.',
+			);
 		} catch (error) {
 			console.error('Recover error:', error);
 			res.status(500).send('Server error during password recovery');
@@ -174,13 +221,15 @@ module.exports = (User) => {
 				return res.status(401).send('Invalid refresh token');
 			}
 
-			const tokens = generateTokens(user);
+			// Preserve rememberMe from the original token
+			const rememberMe = decoded.rememberMe === true;
+			const tokens = generateTokens(user, rememberMe);
 
 			res.cookie('refreshToken', tokens.refreshToken, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
 				sameSite: 'lax',
-				maxAge: 7 * 24 * 60 * 60 * 1000,
+				maxAge: tokens.cookieMaxAge,
 			});
 
 			res.send(tokens.accessToken);
@@ -200,16 +249,16 @@ module.exports = (User) => {
 	router.get('/verify', async (req, res) => {
 		try {
 			const authHeader = req.headers.authorization;
-			
+
 			if (!authHeader) {
 				return res.status(401).json({ valid: false });
 			}
 
 			const token = authHeader.split(' ')[1];
 			const decoded = jwt.verify(token, SECRET_ACCESS);
-			
+
 			const user = await User.findById(decoded.id);
-			
+
 			if (!user || user.isBanned) {
 				return res.status(401).json({ valid: false });
 			}
@@ -271,7 +320,7 @@ module.exports = (User) => {
 			const user = await User.findByIdAndUpdate(
 				id,
 				{ role },
-				{ new: true }
+				{ new: true },
 			).select('-password');
 
 			if (!user) {
@@ -294,14 +343,17 @@ module.exports = (User) => {
 			const user = await User.findByIdAndUpdate(
 				id,
 				{ isBanned },
-				{ new: true }
+				{ new: true },
 			).select('-password');
 
 			if (!user) {
 				return res.status(404).send('User not found');
 			}
 
-			res.json({ user, message: `User ${isBanned ? 'banned' : 'unbanned'} successfully` });
+			res.json({
+				user,
+				message: `User ${isBanned ? 'banned' : 'unbanned'} successfully`,
+			});
 		} catch (error) {
 			console.error('Error updating ban status:', error);
 			res.status(500).send('Failed to update ban status');
@@ -338,7 +390,9 @@ module.exports = (User) => {
 
 			// Validation
 			if (!email || !username || !password) {
-				return res.status(400).send('Email, username, and password are required');
+				return res
+					.status(400)
+					.send('Email, username, and password are required');
 			}
 
 			if (password.length < 8) {
@@ -350,12 +404,14 @@ module.exports = (User) => {
 			}
 
 			// Check if user already exists
-			const existingUser = await User.findOne({ 
-				$or: [{ email: email.toLowerCase() }, { username }] 
+			const existingUser = await User.findOne({
+				$or: [{ email: email.toLowerCase() }, { username }],
 			});
 
 			if (existingUser) {
-				return res.status(409).send('User with this email or username already exists');
+				return res
+					.status(409)
+					.send('User with this email or username already exists');
 			}
 
 			// Hash password
@@ -369,7 +425,7 @@ module.exports = (User) => {
 				password: hashedPassword,
 				role: role || 'user',
 				isActive: true,
-				isBanned: false
+				isBanned: false,
 			});
 
 			await newUser.save();
@@ -378,9 +434,9 @@ module.exports = (User) => {
 			const userResponse = newUser.toObject();
 			delete userResponse.password;
 
-			res.status(201).json({ 
-				user: userResponse, 
-				message: 'User created successfully' 
+			res.status(201).json({
+				user: userResponse,
+				message: 'User created successfully',
 			});
 		} catch (error) {
 			console.error('Error creating user:', error);

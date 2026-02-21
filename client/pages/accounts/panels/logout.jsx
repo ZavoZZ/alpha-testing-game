@@ -1,30 +1,38 @@
-import React, { useContext, useRef } from 'react';
-import { Link } from 'react-router';
+import React, { useContext } from 'react';
 
 import { TokenContext } from '../../utilities/token-provider';
 
-const config = require('../../../config');
-
-//TODO: make this an ACTUAL BUTTON
+/**
+ * Logout Component - Buton de delogare
+ *
+ * Folosește funcția logout din TokenContext care:
+ * - Șterge token-ul din localStorage
+ * - Face call către server pentru a șterge cookie-ul
+ * - Redirectează către homepage
+ */
 const Logout = () => {
-	const authTokens = useContext(TokenContext);
+	const { logout } = useContext(TokenContext);
+
+	const handleLogout = async (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		console.log('[Logout] Initiating logout...');
+		await logout();
+	};
 
 	return (
-		<>
-		{ /* Logout logs you out of the server too */ }
-		<Link to='/' onClick={async () => {
-			const result = await authTokens.tokenFetch(`${config.AUTH_URI}/auth/logout`, {
-				method: 'POST'  // Fixed: server expects POST, not DELETE
-			});
-
-			//any problems?
-			if (!result.ok) {
-				console.error(await result.text());
-			} else {
-				authTokens.setAccessToken('');
-			}
-		}}>Logout</Link>
-		</>
+		<button
+			onClick={handleLogout}
+			className="modern-button secondary"
+			style={{
+				padding: '10px 20px',
+				fontSize: '14px',
+				cursor: 'pointer',
+			}}
+		>
+			🚪 Logout
+		</button>
 	);
 };
 

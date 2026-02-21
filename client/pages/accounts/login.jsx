@@ -9,11 +9,12 @@ import '../../styles/modern-game.css';
 const validateEmail = require('../../../common/utilities/validate-email');
 const config = require('../../config');
 
-const Login = props => {
+const Login = (props) => {
 	const navigate = useNavigate();
 	const authTokens = useContext(TokenContext);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
+	const [rememberMe, setRememberMe] = useState(false);
 
 	// Check if already logged in on mount
 	useEffect(() => {
@@ -32,8 +33,12 @@ const Login = props => {
 		setIsLoading(true);
 
 		console.log('Attempting login...');
-		const [err, accessToken] = await handleSubmit(emailRef.current.value, passwordRef.current.value);
-		
+		const [err, accessToken] = await handleSubmit(
+			emailRef.current.value,
+			passwordRef.current.value,
+			rememberMe,
+		);
+
 		if (err) {
 			console.error('Login error:', err);
 			setError(err);
@@ -42,9 +47,12 @@ const Login = props => {
 		}
 
 		if (accessToken) {
-			console.log('Login successful! Token:', accessToken.substring(0, 20) + '...');
+			console.log(
+				'Login successful! Token:',
+				accessToken.substring(0, 20) + '...',
+			);
 			authTokens.setAccessToken(accessToken);
-			
+
 			// Wait for token to be set, then navigate
 			setTimeout(() => {
 				console.log('Navigating to dashboard...');
@@ -59,8 +67,8 @@ const Login = props => {
 
 	return (
 		<>
-			<ApplyToBody className='dashboard' />
-			
+			<ApplyToBody className="dashboard" />
+
 			{/* Animated Background */}
 			<div className="modern-background">
 				<div className="liquid-blob blob-1"></div>
@@ -76,16 +84,25 @@ const Login = props => {
 			</div>
 
 			<div style={styles.container}>
-				<div className="glass-container animate-slide-up" style={styles.formCard}>
+				<div
+					className="glass-container animate-slide-up"
+					style={styles.formCard}
+				>
 					{/* Header */}
 					<div style={styles.header}>
 						<div style={styles.iconContainer}>
 							<div style={styles.icon}>🔓</div>
 						</div>
-						<h1 className="gaming-title" style={{fontSize: '42px', marginBottom: '8px'}}>
+						<h1
+							className="gaming-title"
+							style={{ fontSize: '42px', marginBottom: '8px' }}
+						>
 							Welcome Back
 						</h1>
-						<p className="gaming-subtitle" style={{fontSize: '16px', marginBottom: '32px'}}>
+						<p
+							className="gaming-subtitle"
+							style={{ fontSize: '16px', marginBottom: '32px' }}
+						>
 							Login to continue your adventure
 						</p>
 					</div>
@@ -98,9 +115,9 @@ const Login = props => {
 								Email
 							</label>
 							<input
-								type='email'
-								name='email'
-								placeholder='your@email.com'
+								type="email"
+								name="email"
+								placeholder="your@email.com"
 								ref={emailRef}
 								className="modern-input"
 								disabled={isLoading}
@@ -114,14 +131,30 @@ const Login = props => {
 								Password
 							</label>
 							<input
-								type='password'
-								name='password'
-								placeholder='Enter your password'
+								type="password"
+								name="password"
+								placeholder="Enter your password"
 								ref={passwordRef}
 								className="modern-input"
 								disabled={isLoading}
 								required
 							/>
+						</div>
+
+						{/* Remember Me Checkbox */}
+						<div style={styles.checkboxGroup}>
+							<input
+								type="checkbox"
+								id="rememberMe"
+								checked={rememberMe}
+								onChange={(e) => setRememberMe(e.target.checked)}
+								style={styles.checkbox}
+								disabled={isLoading}
+							/>
+							<label htmlFor="rememberMe" style={styles.checkboxLabel}>
+								<span style={styles.labelIcon}>🔐</span>
+								Remember me for 30 days
+							</label>
 						</div>
 
 						{error && (
@@ -131,7 +164,7 @@ const Login = props => {
 						)}
 
 						<button
-							type='submit'
+							type="submit"
 							className="modern-button"
 							style={styles.submitButton}
 							disabled={isLoading}
@@ -152,25 +185,22 @@ const Login = props => {
 
 					{/* Links */}
 					<div style={styles.linksContainer}>
-						<Link to='/recover' style={styles.link}>
-							<div style={styles.textLink}>
-								🔑 Forgot Password?
-							</div>
+						<Link to="/recover" style={styles.link}>
+							<div style={styles.textLink}>🔑 Forgot Password?</div>
 						</Link>
-						<Link to='/' style={styles.link}>
-							<div style={styles.textLink}>
-								🏠 Return Home
-							</div>
+						<Link to="/" style={styles.link}>
+							<div style={styles.textLink}>🏠 Return Home</div>
 						</Link>
 					</div>
 
 					{/* Sign Up Prompt */}
 					<div style={styles.signupPrompt}>
-						<p style={styles.promptText}>
-							Don't have an account?
-						</p>
-						<Link to='/signup' style={styles.link}>
-							<button className="modern-button secondary" style={styles.signupButton}>
+						<p style={styles.promptText}>Don't have an account?</p>
+						<Link to="/signup" style={styles.link}>
+							<button
+								className="modern-button secondary"
+								style={styles.signupButton}
+							>
 								<span style={styles.buttonIcon}>⚡</span>
 								Sign Up
 							</button>
@@ -182,7 +212,7 @@ const Login = props => {
 	);
 };
 
-const handleSubmit = async (email, password) => {
+const handleSubmit = async (email, password, rememberMe = false) => {
 	email = email.trim();
 
 	const err = handleValidation(email, password);
@@ -196,13 +226,14 @@ const handleSubmit = async (email, password) => {
 		const result = await fetch(`${config.AUTH_URI}/auth/login`, {
 			method: 'POST',
 			headers: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
 				email,
 				password,
+				rememberMe,
 			}),
-			credentials: 'include'
+			credentials: 'include',
 		});
 
 		//handle errors
@@ -271,6 +302,26 @@ const styles = {
 		display: 'flex',
 		flexDirection: 'column',
 		gap: '8px',
+	},
+	checkboxGroup: {
+		display: 'flex',
+		alignItems: 'center',
+		gap: '10px',
+		marginTop: '4px',
+	},
+	checkbox: {
+		width: '18px',
+		height: '18px',
+		cursor: 'pointer',
+		accentColor: '#667eea',
+	},
+	checkboxLabel: {
+		fontSize: '14px',
+		color: 'rgba(255, 255, 255, 0.8)',
+		display: 'flex',
+		alignItems: 'center',
+		gap: '6px',
+		cursor: 'pointer',
 	},
 	label: {
 		fontSize: '14px',

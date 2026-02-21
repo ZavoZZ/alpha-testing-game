@@ -140,6 +140,9 @@ screenshots/
 !docker-compose.local.yml
 !.env.sandbox.example
 
+# Sandbox environment with MongoDB Atlas credentials - DO NOT COMMIT!
+.env.sandbox
+
 # Production configuration (KEEP IN REPO!)
 !docker-compose.production.yml
 !.env.production
