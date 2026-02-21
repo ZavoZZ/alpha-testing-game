@@ -110,7 +110,9 @@ app.use('/api/auth-service', async (req, res) => {
 		// Get response text
 		const text = await response.text();
 		console.log(`[Auth Proxy] Response status: ${response.status}`);
-		res.status(response.status).send(text);
+		// Convert any $numberDecimal to regular numbers
+		const convertedText = convertJsonString(text);
+		res.status(response.status).send(convertedText);
 	} catch (error) {
 		console.error('[Auth Proxy] ❌ Error:', error.message);
 		res.status(500).send('Proxy error: ' + error.message);
