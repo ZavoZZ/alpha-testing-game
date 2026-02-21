@@ -8,6 +8,25 @@
  */
 
 /**
+ * Verifică dacă un obiect este Decimal128 (BSON/Mongoose)
+ * @param {*} value - Valoarea de verificat
+ * @returns {boolean} - True dacă este Decimal128
+ */
+const isDecimal128 = (value) => {
+	if (value === null || value === undefined) return false;
+	if (typeof value !== 'object') return false;
+
+	// Verifică constructor name
+	const constructorName = value.constructor?.name;
+	if (constructorName === 'Decimal128') return true;
+
+	// Verifică dacă are $numberDecimal (JSON serializat)
+	if (value.$numberDecimal !== undefined) return true;
+
+	return false;
+};
+
+/**
  * Convertește un obiect Decimal128 la number
  * @param {*} value - Valoarea de convertit
  * @returns {*} - Valoarea convertită
@@ -37,9 +56,9 @@ const toNumber = (value) => {
 	// Dacă e obiect Decimal128 (din MongoDB direct)
 	if (typeof value === 'object' && typeof value.toString === 'function') {
 		try {
-			// Verifică dacă arată ca un Decimal128
 			const str = value.toString();
-			if (/^\d+\.?\d*$/.test(str)) {
+			// Verifică dacă arată ca un număr (inclusiv negative)
+			if (/^-?\d+\.?\d*$/.test(str)) {
 				return parseFloat(str);
 			}
 		} catch (e) {
@@ -53,17 +72,28 @@ const toNumber = (value) => {
 /**
  * Convertește recursiv toate valorile Decimal128 dintr-un obiect
  * @param {*} obj - Obiectul de convertit
+ * @param {number} depth - Adâncimea curentă (pentru debugging)
  * @returns {*} - Obiectul cu valorile convertite
  */
-const convertDecimals = (obj) => {
-	// Handle primitives
+const convertDecimals = (obj, depth = 0) => {
+	// Limit depth to prevent infinite recursion
+	if (depth > 20) {
+		return obj;
+	}
+
+	// Handle null/undefined
 	if (obj === null || obj === undefined) {
+		return obj;
+	}
+
+	// Handle primitives (string, number, boolean)
+	if (typeof obj !== 'object') {
 		return obj;
 	}
 
 	// Handle arrays
 	if (Array.isArray(obj)) {
-		return obj.map(convertDecimals);
+		return obj.map((item) => convertDecimals(item, depth + 1));
 	}
 
 	// Handle Date
@@ -71,30 +101,24 @@ const convertDecimals = (obj) => {
 		return obj;
 	}
 
-	// Handle objects
-	if (typeof obj === 'object') {
-		// Verifică dacă e un $numberDecimal
-		if (obj.$numberDecimal !== undefined) {
-			return toNumber(obj);
-		}
-
-		// Verifică dacă e Decimal128 din MongoDB
-		if (obj.constructor && obj.constructor.name === 'Decimal128') {
-			return toNumber(obj);
-		}
-
-		// Convertește recursiv toate proprietățile
-		const result = {};
-		for (const key in obj) {
-			if (Object.prototype.hasOwnProperty.call(obj, key)) {
-				result[key] = convertDecimals(obj[key]);
-			}
-		}
-		return result;
+	// Handle $numberDecimal object (JSON serialized)
+	if (obj.$numberDecimal !== undefined && Object.keys(obj).length === 1) {
+		return toNumber(obj);
 	}
 
-	// Return primitives as-is
-	return obj;
+	// Handle Decimal128 from BSON/Mongoose
+	if (isDecimal128(obj)) {
+		return toNumber(obj);
+	}
+
+	// Handle regular objects - convert all properties
+	const result = {};
+	for (const key in obj) {
+		if (Object.prototype.hasOwnProperty.call(obj, key)) {
+			result[key] = convertDecimals(obj[key], depth + 1);
+		}
+	}
+	return result;
 };
 
 /**
@@ -117,8 +141,27 @@ const decimalConverterMiddleware = (req, res, next) => {
 	next();
 };
 
+/**
+ * Convert JSON string with $numberDecimal to regular numbers
+ * This is useful for proxy servers that receive already-serialized JSON
+ * @param {string} jsonString - JSON string that may contain $numberDecimal
+ * @returns {string} - JSON string with numbers instead of $numberDecimal
+ */
+const convertJsonString = (jsonString) => {
+	try {
+		const data = JSON.parse(jsonString);
+		const converted = convertDecimals(data);
+		return JSON.stringify(converted);
+	} catch (e) {
+		// If not valid JSON, return as-is
+		return jsonString;
+	}
+};
+
 module.exports = {
 	decimalConverterMiddleware,
 	convertDecimals,
 	toNumber,
+	isDecimal128,
+	convertJsonString,
 };
