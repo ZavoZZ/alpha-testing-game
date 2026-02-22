@@ -207,15 +207,30 @@ const decimalConverterMiddleware = (req, res, next) => {
  * Convert JSON string with $numberDecimal to regular numbers
  * This is useful for proxy servers that receive already-serialized JSON
  * @param {string} jsonString - JSON string that may contain $numberDecimal
+ * @param {string} source - Source identifier for logging (e.g., 'economy', 'auth')
  * @returns {string} - JSON string with numbers instead of $numberDecimal
  */
-const convertJsonString = (jsonString) => {
+const convertJsonString = (jsonString, source = 'unknown') => {
+	// Only log in development mode for debugging
+	const isDev = process.env.NODE_ENV === 'development';
+
 	try {
 		const data = JSON.parse(jsonString);
 		const converted = convertDecimals(data);
+
+		// Log conversion result in development only
+		if (isDev && jsonString.includes('$numberDecimal')) {
+			const convertedStr = JSON.stringify(converted);
+			if (convertedStr.includes('$numberDecimal')) {
+				console.warn(
+					`[DecimalConverter] ${source}: WARNING - $numberDecimal still present after conversion!`,
+				);
+			}
+		}
+
 		return JSON.stringify(converted);
 	} catch (e) {
-		// If not valid JSON, return as-is
+		// If not valid JSON, return as-is (no logging to avoid noise)
 		return jsonString;
 	}
 };

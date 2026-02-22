@@ -258,7 +258,7 @@ const WorkStation = () => {
 								🏛️ {workStatus.suggestedEmployer.name}
 							</div>
 							<div style={styles.wageOffer}>
-								Wage: €{workStatus.suggestedEmployer.wage_offer}/shift
+								Wage: €{toNumber(workStatus.suggestedEmployer.wage_offer)}/shift
 							</div>
 						</div>
 					)}
@@ -308,7 +308,7 @@ const WorkStation = () => {
 				<div style={styles.companyName}>🏢 {company.name}</div>
 				<div style={styles.companyType}>{company.type}</div>
 				<div style={styles.wageOffer}>
-					Base Wage: €{company.wage_offer}/shift
+					Base Wage: €{toNumber(company.wage_offer)}/shift
 				</div>
 			</div>
 
@@ -372,21 +372,21 @@ const WorkStation = () => {
 					<div style={styles.paycheckRow}>
 						<span style={styles.paycheckLabel}>Base Wage:</span>
 						<span style={styles.paycheckValue}>
-							€{salary_preview.base_wage}
+							€{toNumber(salary_preview.base_wage)}
 						</span>
 					</div>
 
 					<div style={styles.paycheckRow}>
 						<span style={styles.paycheckLabel}>Gross Salary:</span>
 						<span style={styles.paycheckValue}>
-							€{salary_preview.gross_estimated}
+							€{toNumber(salary_preview.gross_estimated)}
 						</span>
 					</div>
 
 					<div style={styles.paycheckRow}>
 						<span style={styles.paycheckLabel}>Income Tax (15%):</span>
 						<span style={{ ...styles.paycheckValue, color: '#ff4444' }}>
-							-€{salary_preview.tax_estimated}
+							-€{toNumber(salary_preview.tax_estimated)}
 						</span>
 					</div>
 
@@ -432,26 +432,27 @@ const WorkStation = () => {
 								color: '#44ff88',
 							}}
 						>
-							€{salary_preview.net_estimated}
+							€{toNumber(salary_preview.net_estimated)}
 						</span>
 					</div>
 
 					<div style={styles.efficiencyBar}>
 						<div style={styles.efficiencyLabel}>
-							Productivity: {salary_preview.efficiency.combinedPercentage}
+							Productivity:{' '}
+							{salary_preview.efficiency.combinedPercentage}
 						</div>
 						<div style={styles.efficiencyBarBg}>
 							<div
 								style={{
 									...styles.efficiencyBarFill,
-									width: salary_preview.efficiency.combinedPercentage,
+									width: `${Math.min(100, Math.max(0, toNumber(salary_preview.efficiency.combinedPercentage)))}%`,
 								}}
 							></div>
 						</div>
 					</div>
 
 					<div style={styles.costInfo}>
-						⚡ Energy Cost: {salary_preview.energy_cost}
+						⚡ Energy Cost: {toNumber(salary_preview.energy_cost)}
 					</div>
 				</div>
 			)}
@@ -523,7 +524,9 @@ const WorkStation = () => {
 				<div style={styles.statsFooter}>
 					<div style={styles.statItem}>
 						<span style={styles.statLabel}>Total Shifts:</span>
-						<span style={styles.statValue}>{player.total_shifts_worked}</span>
+						<span style={styles.statValue}>
+							{toNumber(player.total_shifts_worked)}
+						</span>
 					</div>
 					<div style={styles.statItem}>
 						<span style={styles.statLabel}>Current Balance:</span>

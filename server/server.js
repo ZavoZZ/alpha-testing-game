@@ -53,6 +53,18 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+	res.json({
+		success: true,
+		status: 'operational',
+		service: 'main-server',
+		timestamp: new Date().toISOString(),
+		uptime: process.uptime(),
+		environment: process.env.NODE_ENV || 'development',
+	});
+});
+
 //handle compressed files (middleware)
 app.get(/.*\.js$/, (req, res, next) => {
 	req.url = req.url + '.gz';
@@ -72,8 +84,8 @@ app.get(/.*\.css$/, (req, res, next) => {
 const { connectDB } = require('./database');
 
 //proxy to microservices
-const AUTH_URI = process.env.AUTH_URI || 'http://auth-server:3200';
-const NEWS_URI = process.env.NEWS_URI || 'http://news-server:3100';
+const AUTH_URI = process.env.AUTH_URI || 'http://auth-server:3100';
+const NEWS_URI = process.env.NEWS_URI || 'http://news-server:3200';
 const CHAT_URI = process.env.CHAT_URI || 'http://chat-server:3300';
 const ECONOMY_URI = process.env.ECONOMY_URI || 'http://economy-server:3400';
 
@@ -111,7 +123,7 @@ app.use('/api/auth-service', async (req, res) => {
 		const text = await response.text();
 		console.log(`[Auth Proxy] Response status: ${response.status}`);
 		// Convert any $numberDecimal to regular numbers
-		const convertedText = convertJsonString(text);
+		const convertedText = convertJsonString(text, 'auth-service');
 		res.status(response.status).send(convertedText);
 	} catch (error) {
 		console.error('[Auth Proxy] ❌ Error:', error.message);
@@ -140,7 +152,9 @@ app.use('/api/news-service', async (req, res) => {
 
 		const response = await fetch(url, options);
 		const text = await response.text();
-		res.status(response.status).send(text);
+		// Convert any $numberDecimal to regular numbers
+		const convertedText = convertJsonString(text, 'news-service');
+		res.status(response.status).send(convertedText);
 	} catch (error) {
 		console.error('News proxy error:', error);
 		res.status(500).send('Proxy error: ' + error.message);
@@ -168,7 +182,9 @@ app.use('/api/chat-service', async (req, res) => {
 
 		const response = await fetch(url, options);
 		const text = await response.text();
-		res.status(response.status).send(text);
+		// Convert any $numberDecimal to regular numbers
+		const convertedText = convertJsonString(text, 'chat-service');
+		res.status(response.status).send(convertedText);
 	} catch (error) {
 		console.error('Chat proxy error:', error);
 		res.status(500).send('Proxy error: ' + error.message);
@@ -271,7 +287,7 @@ app.use('/api/economy', async (req, res) => {
 		const text = await response.text();
 
 		// Convert any $numberDecimal to regular numbers
-		const convertedText = convertJsonString(text);
+		const convertedText = convertJsonString(text, 'economy');
 
 		res.status(response.status).send(convertedText);
 	} catch (error) {

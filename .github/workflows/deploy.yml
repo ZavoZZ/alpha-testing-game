@@ -9,12 +9,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Deploy to server
+
+      - name: Deploy to server with Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -23,47 +23,42 @@ jobs:
           port: 22
           script: |
             cd /root/MERN-template
-            
+
             echo "🔄 Pulling latest code..."
             git pull origin main
-            
-            echo "📦 Installing dependencies..."
-            cd microservices/economy-server
-            npm install --production
-            
-            cd ../../microservices/auth-server
-            npm install --production
-            
-            cd ../../microservices/news-server
-            npm install --production
-            
-            cd ../../microservices/chat-server
-            npm install --production
-            
-            cd ../../client
-            npm install
-            
-            echo "🏗️ Building client..."
-            npm run build
-            
-            echo "🔄 Restarting services..."
-            pm2 restart all
-            
+
+            echo "🐳 Stopping existing containers..."
+            docker compose -f docker-compose.production.yml down || true
+
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+
+            echo "🏗️ Building and starting containers..."
+            docker compose -f docker-compose.production.yml --env-file .env.production up -d --build
+
             echo "⏳ Waiting for services to start..."
-            sleep 10
-            
-            echo "✅ Checking service status..."
-            pm2 list
-            
+            sleep 20
+
+            echo "✅ Checking container status..."
+            docker compose -f docker-compose.production.yml ps
+
             echo "🏥 Running health checks..."
-            curl -f http://localhost:3000/health || echo "⚠️ Main server health check failed"
-            curl -f http://localhost:3200/health || echo "⚠️ Auth server health check failed"
-            curl -f http://localhost:3100/health || echo "⚠️ News server health check failed"
-            curl -f http://localhost:3300/health || echo "⚠️ Chat server health check failed"
-            curl -f http://localhost:3400/health || echo "⚠️ Economy server health check failed"
-            
+            echo "Main App:"
+            curl -sf http://localhost:3000/health && echo " ✅ OK" || echo " ⚠️ Failed"
+            echo "Auth Service:"
+            curl -sf http://localhost:3100/health && echo " ✅ OK" || echo " ⚠️ Failed"
+            echo "News Service:"
+            curl -sf http://localhost:3200/health && echo " ✅ OK" || echo " ⚠️ Failed"
+            echo "Chat Service:"
+            curl -sf http://localhost:3300/health && echo " ✅ OK" || echo " ⚠️ Failed"
+            echo "Economy Service:"
+            curl -sf http://localhost:3400/health && echo " ✅ OK" || echo " ⚠️ Failed"
+
+            echo "📊 Container resource usage..."
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+
             echo "🎉 Deployment complete!"
-      
+
       - name: Notify deployment status
         if: always()
         run: |

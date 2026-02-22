@@ -4,20 +4,31 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
+// Decimal converter middleware - converts MongoDB Decimal128 to numbers
+const {
+	decimalConverterMiddleware,
+} = require('../../server/middleware/decimal-converter');
+
 const app = express();
 const PORT = process.env.PORT || 3300;
 
 // Middleware
-app.use(cors({
-	origin: process.env.WEB_ORIGIN || '*',
-	credentials: true,
-}));
+app.use(
+	cors({
+		origin: process.env.WEB_ORIGIN || '*',
+		credentials: true,
+	}),
+);
 app.use(express.json());
+
+// Apply decimal converter to all API responses
+app.use(decimalConverterMiddleware);
 
 // Database connection
 const connectDB = async () => {
 	try {
-		const uri = process.env.DB_URI || 'mongodb://mongodb:27017/game_db?replicaSet=rs0';
+		const uri =
+			process.env.DB_URI || 'mongodb://mongodb:27017/game_db?replicaSet=rs0';
 		await mongoose.connect(uri);
 		console.log('MongoDB connected successfully');
 	} catch (err) {
@@ -27,27 +38,30 @@ const connectDB = async () => {
 };
 
 // Message Model
-const messageSchema = new mongoose.Schema({
-	username: {
-		type: String,
-		required: true
+const messageSchema = new mongoose.Schema(
+	{
+		username: {
+			type: String,
+			required: true,
+		},
+		userId: {
+			type: String,
+			required: true,
+		},
+		message: {
+			type: String,
+			required: true,
+			maxlength: 500,
+		},
+		room: {
+			type: String,
+			default: 'global',
+		},
 	},
-	userId: {
-		type: String,
-		required: true
+	{
+		timestamps: true,
 	},
-	message: {
-		type: String,
-		required: true,
-		maxlength: 500
-	},
-	room: {
-		type: String,
-		default: 'global'
-	}
-}, {
-	timestamps: true
-});
+);
 
 messageSchema.index({ createdAt: -1 });
 messageSchema.index({ room: 1 });
@@ -62,7 +76,7 @@ const io = new Server(httpServer, {
 	cors: {
 		origin: process.env.WEB_ORIGIN || '*',
 		credentials: true,
-	}
+	},
 });
 
 // Socket.IO connection handling
@@ -85,7 +99,7 @@ io.on('connection', (socket) => {
 				username,
 				userId,
 				message: message.slice(0, 500), // Limit length
-				room: room || 'global'
+				room: room || 'global',
 			});
 
 			// Broadcast to room
@@ -93,10 +107,12 @@ io.on('connection', (socket) => {
 				id: msg._id,
 				username: msg.username,
 				message: msg.message,
-				timestamp: msg.createdAt
+				timestamp: msg.createdAt,
 			});
 
-			console.log(`Message from ${username} in ${room || 'global'}: ${message}`);
+			console.log(
+				`Message from ${username} in ${room || 'global'}: ${message}`,
+			);
 		} catch (error) {
 			console.error('Message error:', error);
 		}
@@ -114,10 +130,10 @@ app.use('/chat', chatRoutes(Message));
 
 // Health check
 app.get('/health', (req, res) => {
-	res.json({ 
-		status: 'ok', 
+	res.json({
+		status: 'ok',
 		service: 'chat-server',
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
 	});
 });
 
@@ -125,6 +141,8 @@ app.get('/health', (req, res) => {
 httpServer.listen(PORT, '0.0.0.0', async () => {
 	await connectDB();
 	console.log(`Chat Server listening on 0.0.0.0:${PORT}`);
-	console.log(`Database: ${process.env.DB_URI || 'mongodb://mongodb:27017/game_db?replicaSet=rs0'}`);
+	console.log(
+		`Database: ${process.env.DB_URI || 'mongodb://mongodb:27017/game_db?replicaSet=rs0'}`,
+	);
 	console.log(`Socket.IO ready`);
 });

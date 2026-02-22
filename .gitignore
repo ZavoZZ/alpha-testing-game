@@ -131,6 +131,9 @@ qdrant_storage/
 # Kilo Code backups (generated before rebuild)
 .kilo/backups/
 
+# Kilo Code MCP environment variables (contains secrets)
+.kilocode/.env
+
 # Screenshots from browser tests
 screenshots/
 
@@ -146,4 +149,16 @@ screenshots/
 # Production configuration (KEEP IN REPO!)
 !docker-compose.production.yml
 !.env.production
+
+# Log files with potential secrets - DO NOT COMMIT!
+*.log
+logs/
+server.log
+auth.log
+chat.log
+economy.log
+news.log
+
+# Development environment files
+.envdev
 
